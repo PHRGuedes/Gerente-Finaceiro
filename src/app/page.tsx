@@ -8,6 +8,7 @@ import {
   InformalDebt,
   ForecastItem,
   AccountBalance,
+  PokerEntry,
 } from '@/types/finance'
 
 export default async function DashboardPage() {
@@ -106,6 +107,14 @@ export default async function DashboardPage() {
 
   const categories = (categoryRows || []) as Category[]
 
+  // 7. Buscar Lançamentos de Poker (Tracker e Bankroll Independente)
+  const { data: pokerRows } = await supabase
+    .from('poker_entries')
+    .select('*')
+    .order('date', { ascending: false })
+
+  const pokerEntries = (pokerRows || []) as PokerEntry[]
+
   return (
     <DashboardShell
       initialData={{
@@ -132,6 +141,7 @@ export default async function DashboardPage() {
         allForecastItems,
         transactions: allTransactions,
         categories,
+        pokerEntries,
       }}
     />
   )

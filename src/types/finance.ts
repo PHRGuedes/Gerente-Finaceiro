@@ -9,6 +9,7 @@ export type InformalDebt = Tables<'informal_debts'>
 export type ForecastItem = Tables<'forecast_items'>
 export type Category = Tables<'categories'>
 export type AccountBalance = Tables<'account_balances'>
+export type PokerEntry = Tables<'poker_entries'>
 
 export type PaymentMethod = Database['public']['Enums']['payment_method']
 export type TransactionType = Database['public']['Enums']['transaction_type']
@@ -16,6 +17,8 @@ export type ReceivableStatus = Database['public']['Enums']['receivable_status']
 export type ForecastType = Database['public']['Enums']['forecast_type']
 export type CategoryType = Database['public']['Enums']['category_type']
 export type AccountType = Database['public']['Enums']['account_type']
+export type PokerGameType = Database['public']['Tables']['poker_entries']['Row']['game_type']
+export type PokerEntryType = Database['public']['Tables']['poker_entries']['Row']['entry_type']
 
 // Form and Mutation Payloads
 export type CreateTransactionInput = Database['public']['Tables']['transactions']['Insert']
@@ -45,20 +48,4 @@ export interface FinancialSummary {
 }
 
 
-// Poker Tracker Interfaces
-export type PokerGameType = 'tournament' | 'cash'
-export type PokerEntryType = 'buy_in' | 'cash_out'
 
-export interface PokerEntry {
-  id: string
-  user_id: string | null
-  date: string
-  description: string
-  game_type: PokerGameType
-  entry_type: PokerEntryType
-  amount: number
-  location?: string | null
-  notes?: string | null
-  created_at: string
-  updated_at: string
-}

@@ -15,6 +15,7 @@ import {
   Layers,
   HandCoins,
   CalendarDays,
+  Spade,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { HeaderStats } from '@/components/dashboard/header-stats'
@@ -24,6 +25,7 @@ import { CategoryChart } from '@/components/dashboard/category-chart'
 import { ReceivablesSection } from '@/components/dashboard/receivables-section'
 import { DebtsManager } from '@/components/dashboard/debts-manager'
 import { ForecastSimulator } from '@/components/dashboard/forecast-simulator'
+import { PokerSection } from '@/components/dashboard/poker-section'
 import { NewTransactionModal } from '@/components/dashboard/new-transaction-modal'
 import { PayInvoiceModal } from '@/components/dashboard/pay-invoice-modal'
 import { SettleReceivableModal } from '@/components/dashboard/settle-receivable-modal'
@@ -38,9 +40,10 @@ import {
   InformalDebt,
   ForecastItem,
   AccountBalance,
+  PokerEntry,
 } from '@/types/finance'
 
-export type ActiveTab = 'overview' | 'notinhas' | 'forecast' | 'debts'
+export type ActiveTab = 'overview' | 'notinhas' | 'forecast' | 'debts' | 'poker'
 
 interface DashboardShellProps {
   initialData: {
@@ -67,6 +70,7 @@ interface DashboardShellProps {
     allForecastItems: ForecastItem[]
     transactions: Transaction[]
     categories: Category[]
+    pokerEntries?: PokerEntry[]
   }
 }
 
@@ -90,6 +94,7 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
     allForecastItems,
     transactions,
     categories,
+    pokerEntries = [],
   } = initialData
 
   const pendingNotinhasCount = allReceivables.filter((r) => r.status === 'pending').length
@@ -171,6 +176,18 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
               <HandCoins className="h-3.5 w-3.5" />
               Dívidas
             </button>
+
+            <button
+              onClick={() => setActiveTab('poker')}
+              className={`h-8 px-3 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
+                activeTab === 'poker'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <Spade className="h-3.5 w-3.5 text-emerald-400" />
+              Poker
+            </button>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -229,6 +246,15 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
           >
             <HandCoins className="h-3.5 w-3.5" />
             Dívidas
+          </button>
+          <button
+            onClick={() => setActiveTab('poker')}
+            className={`py-2 px-2 font-semibold flex items-center gap-1 ${
+              activeTab === 'poker' ? 'text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-400'
+            }`}
+          >
+            <Spade className="h-3.5 w-3.5" />
+            Poker
           </button>
         </div>
       </header>
@@ -318,12 +344,17 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
           />
         )}
 
-        {/* ABA: GESTÃO DE DÍVIDAS INFORMAIS (ETAPA 5) */}
+        {/* ABA: GESTÃO DE DÍVIDAS */}
         {activeTab === 'debts' && (
           <DebtsManager
             debts={informalDebts.items}
             checkingBalance={checkingBalance}
           />
+        )}
+
+        {/* ABA: TRACKER & BANKROLL DE POKER INDEPENDENTE */}
+        {activeTab === 'poker' && (
+          <PokerSection entries={pokerEntries} />
         )}
       </main>
 

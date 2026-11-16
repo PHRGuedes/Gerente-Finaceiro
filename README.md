@@ -104,6 +104,25 @@ O componente **Lançamento Rápido** fica fixado no topo do Dashboard e oferece 
 
 ---
 
+## ♠️ Tracker & Bankroll de Poker (Aba Exclusiva e Isolada)
+
+Uma aba dedicada inteiramente ao acompanhamento de jogatinas de Poker, **totalmente independente** do saldo principal e da fatura do cartão:
+
+1. **Indicador de Lucro/Prejuízo Vitalício:**
+   - Permite saber a qualquer momento se ao longo da vida o jogador está no positivo ou negativo nas jogatinas (`+ R$` ou `- R$`).
+   - Cards de métricas: **Resultado Líquido**, **Total de Saídas (Premiações / Cashout)**, **Total de Entradas (Buy-ins / Rebuys)**, **ROI (%)** e **Breakdown Torneios vs Cash Game**.
+
+2. **Filtro Avançado por Período de Datas & Modalidade:**
+   - Atalhos de período: **Vitalício (Tudo)**, **Este Mês**, **Mês Passado**, **Este Ano**, **Últimos 30 Dias** e **Intervalo Personalizado** (data início e fim).
+   - Filtro de modalidade: **Todos**, **Torneios** (Trophy) e **Cash Game** (Coins).
+   - Filtro de movimentação: **Tudo**, **Apenas Receitas (Premiações)** e **Apenas Despesas (Buy-ins)**.
+
+3. **Lançamento Rápido de Sessão:**
+   - **Sessão Completa:** Registre a data, descrição, modalidade, valor de Buy-in e valor de Cashout juntos, com cálculo do lucro líquido daquela jogatina em tempo real antes de salvar.
+   - **Movimentação Avulsa:** Registro individual de entradas ou saídas pontuais.
+
+---
+
 ## 📂 Estrutura de Diretórios
 
 ```

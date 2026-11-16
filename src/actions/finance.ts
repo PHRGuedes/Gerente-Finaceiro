@@ -631,3 +631,122 @@ export async function batchCreateTransactionsAction(items: {
   revalidatePath('/')
   return { success: true, count: items.length }
 }
+
+
+/**
+ * ==============================================================================
+ * AÇÕES DO POKER TRACKER (BANKROLL INDEPENDENTE)
+ * Totalmente isolado do saldo de conta e das transações gerais do sistema.
+ * ==============================================================================
+ */
+
+/**
+ * Cadastra uma entrada avulsa de poker (Buy-in / Despesa ou Cashout / Receita).
+ */
+export async function createPokerEntryAction(params: {
+  date: string
+  description: string
+  game_type: 'tournament' | 'cash'
+  entry_type: 'buy_in' | 'cash_out'
+  amount: number
+  location?: string
+  notes?: string
+}) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('poker_entries')
+    .insert({
+      date: params.date,
+      description: params.description.trim(),
+      game_type: params.game_type,
+      entry_type: params.entry_type,
+      amount: params.amount,
+      location: params.location ? params.location.trim() : null,
+      notes: params.notes ? params.notes.trim() : null,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Erro ao cadastrar entrada de poker:', error)
+    throw new Error(`Falha ao registrar poker: ${error.message}`)
+  }
+
+  revalidatePath('/')
+  return { success: true, entry: data }
+}
+
+/**
+ * Cadastra uma sessão completa de poker no Tracker (Buy-in inicial e Cash-out / Premiação final).
+ */
+export async function createPokerTrackerSessionAction(params: {
+  date: string
+  description: string
+  game_type: 'tournament' | 'cash'
+  buy_in_amount: number
+  cash_out_amount: number
+  location?: string
+  notes?: string
+}) {
+  const supabase = await createClient()
+  const inserts = []
+
+  if (params.buy_in_amount > 0) {
+    inserts.push({
+      date: params.date,
+      description: `${params.description.trim()} (Buy-in)`,
+      game_type: params.game_type,
+      entry_type: 'buy_in' as const,
+      amount: params.buy_in_amount,
+      location: params.location ? params.location.trim() : null,
+      notes: params.notes ? params.notes.trim() : null,
+    })
+  }
+
+  if (params.cash_out_amount > 0) {
+    inserts.push({
+      date: params.date,
+      description: `${params.description.trim()} (Cashout/Prêmio)`,
+      game_type: params.game_type,
+      entry_type: 'cash_out' as const,
+      amount: params.cash_out_amount,
+      location: params.location ? params.location.trim() : null,
+      notes: params.notes ? params.notes.trim() : null,
+    })
+  }
+
+  if (inserts.length === 0) {
+    throw new Error('Informe ao menos um valor de Buy-in ou Cashout.')
+  }
+
+  const { error } = await supabase.from('poker_entries').insert(inserts)
+
+  if (error) {
+    console.error('Erro ao cadastrar sessão de poker:', error)
+    throw new Error(`Falha ao registrar sessão: ${error.message}`)
+  }
+
+  revalidatePath('/')
+  return { success: true, count: inserts.length }
+}
+
+/**
+ * Exclui um lançamento do tracker de poker.
+ */
+export async function deletePokerEntryAction(id: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('poker_entries')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Erro ao excluir lançamento de poker:', error)
+    throw new Error(`Erro ao excluir: ${error.message}`)
+  }
+
+  revalidatePath('/')
+  return { success: true }
+}

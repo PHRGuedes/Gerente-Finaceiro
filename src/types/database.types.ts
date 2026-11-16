@@ -12,6 +12,8 @@ export type ReceivableStatus = 'pending' | 'paid'
 export type ForecastType = 'income' | 'fixed_expense'
 export type CategoryType = 'income' | 'expense' | 'both'
 export type AccountType = 'checking' | 'cash' | 'savings' | 'investment' | 'credit'
+export type PokerGameType = 'tournament' | 'cash'
+export type PokerEntryType = 'buy_in' | 'cash_out'
 
 export interface Database {
   public: {
@@ -248,6 +250,48 @@ export interface Database {
           account_type?: AccountType
           initial_balance?: number
           current_balance?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      poker_entries: {
+        Row: {
+          id: string
+          user_id: string | null
+          date: string
+          description: string
+          game_type: PokerGameType
+          entry_type: PokerEntryType
+          amount: number
+          location: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          date?: string
+          description: string
+          game_type: PokerGameType
+          entry_type: PokerEntryType
+          amount: number
+          location?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          date?: string
+          description?: string
+          game_type?: PokerGameType
+          entry_type?: PokerEntryType
+          amount?: number
+          location?: string | null
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }
