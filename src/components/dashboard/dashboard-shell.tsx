@@ -201,56 +201,76 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
             <Button
               size="sm"
               onClick={() => setIsNewTxOpen(true)}
-              className="h-8 px-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-1.5 rounded-lg"
+              className="h-8 px-2.5 sm:px-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-1.5 rounded-lg"
             >
-              <PlusCircle className="h-3.5 w-3.5 text-black" />
-              <span>Novo Lançamento</span>
+              <PlusCircle className="h-3.5 w-3.5 text-black shrink-0" />
+              <span className="hidden sm:inline">Novo Lançamento</span>
+              <span className="sm:hidden">Novo</span>
             </Button>
           </div>
         </div>
 
-        {/* Abas Secundárias Mobile e Tablets */}
-        <div className="lg:hidden flex items-center justify-around border-t border-white/[0.04] p-1 bg-[#090d16] text-xs">
+        {/* Abas Secundárias Mobile e Tablets com Scroll Suave */}
+        <div className="lg:hidden flex items-center gap-1 overflow-x-auto scrollbar-none p-1.5 bg-[#090d16] border-t border-white/[0.06] text-xs">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`py-2 px-2 font-semibold flex items-center gap-1 ${
-              activeTab === 'overview' ? 'text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-400'
+            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+              activeTab === 'overview'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             <LayoutDashboard className="h-3.5 w-3.5" />
             Visão Geral
           </button>
+
           <button
             onClick={() => setActiveTab('notinhas')}
-            className={`py-2 px-2 font-semibold flex items-center gap-1 ${
-              activeTab === 'notinhas' ? 'text-amber-400 border-b-2 border-amber-500' : 'text-slate-400'
+            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+              activeTab === 'notinhas'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             <Users className="h-3.5 w-3.5" />
-            Notinhas ({pendingNotinhasCount})
+            Notinhas
+            {pendingNotinhasCount > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-amber-500/20 text-amber-300 font-bold">
+                {pendingNotinhasCount}
+              </span>
+            )}
           </button>
+
           <button
             onClick={() => setActiveTab('forecast')}
-            className={`py-2 px-2 font-semibold flex items-center gap-1 ${
-              activeTab === 'forecast' ? 'text-teal-400 border-b-2 border-teal-500' : 'text-slate-400'
+            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+              activeTab === 'forecast'
+                ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30 font-semibold'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             <TrendingUp className="h-3.5 w-3.5" />
             Previsão
           </button>
+
           <button
             onClick={() => setActiveTab('debts')}
-            className={`py-2 px-2 font-semibold flex items-center gap-1 ${
-              activeTab === 'debts' ? 'text-cyan-400 border-b-2 border-cyan-500' : 'text-slate-400'
+            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+              activeTab === 'debts'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             <HandCoins className="h-3.5 w-3.5" />
             Dívidas
           </button>
+
           <button
             onClick={() => setActiveTab('poker')}
-            className={`py-2 px-2 font-semibold flex items-center gap-1 ${
-              activeTab === 'poker' ? 'text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-400'
+            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+              activeTab === 'poker'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             <Spade className="h-3.5 w-3.5" />

@@ -250,9 +250,6 @@ export function QuickEntryBar({ categories }: QuickEntryBarProps) {
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   Lançamento Rápido
-                  <Badge variant="success" className="text-[10px] font-mono py-0">
-                    Etapa 3
-                  </Badge>
                 </h3>
                 <p className="text-[11px] text-slate-400">
                   Lançamento inteligente por linguagem natural ou formulário expresso
