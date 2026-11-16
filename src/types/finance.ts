@@ -43,3 +43,22 @@ export interface FinancialSummary {
   paidInformalDebts: number
   remainingInformalDebts: number
 }
+
+
+// Poker Tracker Interfaces
+export type PokerGameType = 'tournament' | 'cash'
+export type PokerEntryType = 'buy_in' | 'cash_out'
+
+export interface PokerEntry {
+  id: string
+  user_id: string | null
+  date: string
+  description: string
+  game_type: PokerGameType
+  entry_type: PokerEntryType
+  amount: number
+  location?: string | null
+  notes?: string | null
+  created_at: string
+  updated_at: string
+}

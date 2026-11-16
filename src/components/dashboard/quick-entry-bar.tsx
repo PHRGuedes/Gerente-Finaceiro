@@ -113,6 +113,7 @@ export function QuickEntryBar({ categories }: QuickEntryBarProps) {
     { label: 'Sessão Poker', text: 'cash poker -90 +151' },
     { label: 'Receita Freeroll', text: '+100 Croupier freeroll pix' },
     { label: 'Café / Spincoffee', text: '12,90 Barrinha Spincoffee alimentacao credito' },
+    { label: 'Notinha Luiza 2/10', text: '85,00 Vestido Luiza 2/10 credito' },
     { label: 'Formato Bloco', text: 'Tipo: Despesa | Descrição: 2 Açaís | Valor: 25,82 | Data: 11/11 | Forma de pagamento: Crédito | Categoria: Lazer' },
   ]
 
@@ -150,7 +151,7 @@ export function QuickEntryBar({ categories }: QuickEntryBarProps) {
           throw new Error('Informe um valor monetário válido.')
         }
 
-        await createTransactionAction({
+        const res = await createTransactionAction({
           type: tx.type,
           description: tx.description,
           amount: tx.amount,
@@ -159,11 +160,18 @@ export function QuickEntryBar({ categories }: QuickEntryBarProps) {
           category: tx.category,
           is_third_party: tx.isThirdParty,
           debtor_name: tx.debtorName,
+          installment_current: tx.installmentCurrent,
+          installment_total: tx.installmentTotal,
         })
+
+        const instMsg =
+          tx.installmentTotal > 1
+            ? ` (Motor projetou ${res.count} parcelas de ${tx.installmentCurrent}/${tx.installmentTotal} até ${tx.installmentTotal}/${tx.installmentTotal})`
+            : ''
 
         setFeedback({
           type: 'success',
-          message: `${tx.type === 'income' ? 'Receita' : 'Despesa'} de ${formatCurrency(tx.amount)} salva com sucesso!`,
+          message: `${tx.type === 'income' ? 'Receita' : 'Despesa'} de ${formatCurrency(tx.amount)} salva com sucesso!${instMsg}`,
         })
       }
 
@@ -472,6 +480,11 @@ export function QuickEntryBar({ categories }: QuickEntryBarProps) {
                                   <Badge variant="warning" className="text-[10px] py-0 flex items-center gap-1">
                                     <Users className="h-2.5 w-2.5" />
                                     Notinha: {tx.debtorName}
+                                  </Badge>
+                                )}
+                                {tx.installmentTotal > 1 && (
+                                  <Badge variant="info" className="text-[10px] py-0 font-mono">
+                                    Parcela {tx.installmentCurrent}/{tx.installmentTotal} (Projeção Ativa)
                                   </Badge>
                                 )}
                               </div>

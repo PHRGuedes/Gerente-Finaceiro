@@ -450,3 +450,184 @@ export async function createPokerSessionAction(params: {
   revalidatePath('/')
   return { success: true, netProfit: params.cashOut - params.buyIn }
 }
+
+
+/**
+ * Cria ou atualiza um item de previsão orçamentária (Receita Prevista ou Despesa Fixa).
+ */
+export async function createForecastItemAction(params: {
+  type: 'income' | 'fixed_expense'
+  description: string
+  amount: number
+  is_variable?: boolean
+  category?: string
+}) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('forecast_items')
+    .insert({
+      type: params.type,
+      description: params.description.trim(),
+      amount: params.amount,
+      is_variable: Boolean(params.is_variable),
+      active: true,
+      category: params.category || (params.type === 'income' ? 'Salário' : 'Contas'),
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error(`Erro ao salvar item de previsão: ${error.message}`)
+
+  revalidatePath('/')
+  return { success: true, item: data }
+}
+
+/**
+ * Atualiza um item de previsão orçamentária.
+ */
+export async function updateForecastItemAction(
+  id: string,
+  params: {
+    description?: string
+    amount?: number
+    is_variable?: boolean
+    active?: boolean
+    category?: string
+  }
+) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('forecast_items')
+    .update(params)
+    .eq('id', id)
+
+  if (error) throw new Error(`Erro ao atualizar item de previsão: ${error.message}`)
+
+  revalidatePath('/')
+  return { success: true }
+}
+
+/**
+ * Remove um item de previsão orçamentária.
+ */
+export async function deleteForecastItemAction(id: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('forecast_items')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw new Error(`Erro ao remover item de previsão: ${error.message}`)
+
+  revalidatePath('/')
+  return { success: true }
+}
+
+/**
+ * Cria uma nova dívida informal (ex: empréstimo com amigo ou parente).
+ */
+export async function createInformalDebtAction(params: {
+  creditor_name: string
+  total_amount: number
+  paid_amount?: number
+  notes?: string
+}) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('informal_debts')
+    .insert({
+      creditor_name: params.creditor_name.trim(),
+      total_amount: params.total_amount,
+      paid_amount: params.paid_amount || 0,
+      notes: params.notes ? params.notes.trim() : null,
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error(`Erro ao cadastrar dívida informal: ${error.message}`)
+
+  revalidatePath('/')
+  return { success: true, debt: data }
+}
+
+/**
+ * Remove uma dívida informal.
+ */
+export async function deleteInformalDebtAction(id: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('informal_debts')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw new Error(`Erro ao remover dívida: ${error.message}`)
+
+  revalidatePath('/')
+  return { success: true }
+}
+
+
+/**
+ * Importação em lote de transações (usado pelo Conciliador de CSV do Nubank).
+ */
+export async function batchCreateTransactionsAction(items: {
+  type: TransactionType
+  description: string
+  amount: number
+  date: string
+  payment_method: PaymentMethod
+  category: string
+  is_third_party: boolean
+  debtor_name?: string | null
+  billing_cycle?: string
+}[]) {
+  const supabase = await createClient()
+
+  for (const item of items) {
+    const cycle = item.billing_cycle || getCycleForDate(item.date)
+
+    const { data: tx, error } = await supabase
+      .from('transactions')
+      .insert({
+        type: item.type,
+        description: item.description.trim(),
+        amount: item.amount,
+        date: item.date,
+        payment_method: item.payment_method,
+        category: item.category,
+        is_third_party: item.is_third_party,
+        debtor_name: item.is_third_party && item.debtor_name ? item.debtor_name.trim() : null,
+        billing_cycle: cycle,
+        installment_current: 1,
+        installment_total: 1,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro na importação em lote:', error)
+      throw new Error(`Erro ao importar "${item.description}": ${error.message}`)
+    }
+
+    if (item.is_third_party && item.debtor_name) {
+      await supabase.from('receivables').insert({
+        debtor_name: item.debtor_name.trim(),
+        description: item.description.trim(),
+        amount: item.amount,
+        installment_current: 1,
+        installment_total: 1,
+        status: 'pending',
+        billing_cycle: cycle,
+        transaction_id: tx?.id || null,
+      })
+    }
+  }
+
+  revalidatePath('/')
+  return { success: true, count: items.length }
+}

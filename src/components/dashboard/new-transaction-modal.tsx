@@ -9,9 +9,9 @@ import {
   Banknote,
   Users,
   Calendar,
-  DollarSign,
+  Layers,
   Tag,
-  FileText,
+  DollarSign,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Category } from '@/types/finance'
@@ -37,13 +37,15 @@ export function NewTransactionModal({
   const [category, setCategory] = useState('')
   const [isThirdParty, setIsThirdParty] = useState(false)
   const [debtorName, setDebtorName] = useState('')
+  const [installmentCurrent, setInstallmentCurrent] = useState('1')
   const [installmentTotal, setInstallmentTotal] = useState('1')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
   if (!isOpen) return null
 
-  // Filtra categorias apropriadas para o tipo
+  const frequentDebtors = ['Luiza', 'Nalyne', 'Yara', 'Marcos', 'Lucas']
+
   const availableCategories = categories.filter(
     (c) => c.type === 'both' || c.type === type
   )
@@ -73,6 +75,14 @@ export function NewTransactionModal({
       return
     }
 
+    const cur = parseInt(installmentCurrent, 10) || 1
+    const tot = parseInt(installmentTotal, 10) || 1
+
+    if (cur > tot) {
+      setErrorMsg('A parcela atual não pode ser maior que o total de parcelas.')
+      return
+    }
+
     setLoading(true)
     try {
       await createTransactionAction({
@@ -83,16 +93,18 @@ export function NewTransactionModal({
         payment_method: paymentMethod,
         category,
         is_third_party: isThirdParty,
-        debtor_name: isThirdParty ? debtorName : null,
-        installment_current: 1,
-        installment_total: parseInt(installmentTotal, 10) || 1,
+        debtor_name: isThirdParty ? debtorName.trim() : null,
+        installment_current: cur,
+        installment_total: tot,
       })
 
-      // Reset form
+      // Reset
       setDescription('')
       setAmount('')
       setIsThirdParty(false)
       setDebtorName('')
+      setInstallmentCurrent('1')
+      setInstallmentTotal('1')
       onClose()
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Erro ao salvar transação')
@@ -112,7 +124,7 @@ export function NewTransactionModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Novo Lançamento</h2>
-              <p className="text-xs text-slate-400">Cadastre despesas, receitas ou notinhas</p>
+              <p className="text-xs text-slate-400">Despesas, receitas, parcelas e notinhas</p>
             </div>
           </div>
           <button
@@ -153,6 +165,7 @@ export function NewTransactionModal({
                 setType('income')
                 setCategory('')
                 setIsThirdParty(false)
+                setInstallmentTotal('1')
               }}
               className={`py-2 text-xs font-semibold rounded-lg transition-all ${
                 type === 'income'
@@ -168,7 +181,7 @@ export function NewTransactionModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">
-                Valor (R$)
+                Valor por Parcela (R$)
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs">
@@ -261,6 +274,45 @@ export function NewTransactionModal({
             </div>
           </div>
 
+          {/* Parcelamento no Crédito (Motor de Parcelamento) */}
+          {paymentMethod === 'credit' && type === 'expense' && (
+            <div className="p-3.5 rounded-xl bg-violet-500/5 border border-violet-500/20 space-y-2">
+              <span className="text-xs font-semibold text-violet-300 flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-violet-400" />
+                Motor de Parcelamento no Crédito
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                    Parcela Atual
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={installmentCurrent}
+                    onChange={(e) => setInstallmentCurrent(e.target.value)}
+                    className="w-full bg-[#111726] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                    Total de Parcelas
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={installmentTotal}
+                    onChange={(e) => setInstallmentTotal(e.target.value)}
+                    className="w-full bg-[#111726] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-violet-300/80">
+                O sistema registrará a parcela {installmentCurrent}/{installmentTotal} no ciclo atual e criará automaticamente as parcelas futuras nos próximos ciclos até a última.
+              </p>
+            </div>
+          )}
+
           {/* Categoria */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1">
@@ -289,7 +341,7 @@ export function NewTransactionModal({
                   type="checkbox"
                   checked={isThirdParty}
                   onChange={(e) => setIsThirdParty(e.target.checked)}
-                  className="rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500/50 h-4 w-4"
+                  className="rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500/50 h-4 w-4"
                 />
                 <span className="text-xs text-amber-300 font-medium flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5 text-amber-400" />
@@ -298,22 +350,36 @@ export function NewTransactionModal({
               </label>
 
               {isThirdParty && (
-                <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-2 animate-in fade-in">
-                  <div>
-                    <label className="block text-[11px] font-medium text-amber-200 mb-1">
-                      Nome de quem deve (Devedor)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Marcos (Amigo), Lucas, etc."
-                      value={debtorName}
-                      onChange={(e) => setDebtorName(e.target.value)}
-                      required={isThirdParty}
-                      className="w-full bg-[#111726] border border-amber-500/30 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
-                    />
+                <div className="p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-2 animate-in fade-in">
+                  <label className="block text-[11px] font-medium text-amber-200">
+                    Pessoa que deve (Devedor)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-1.5">
+                    {frequentDebtors.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => setDebtorName(name)}
+                        className={`px-2.5 py-0.5 rounded-md text-xs font-medium border transition-all ${
+                          debtorName.toLowerCase() === name.toLowerCase()
+                            ? 'bg-amber-500 text-black border-amber-500 font-bold'
+                            : 'bg-white/[0.03] text-slate-300 border-white/[0.08] hover:border-white/20'
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    ))}
                   </div>
+                  <input
+                    type="text"
+                    placeholder="Digite o nome da pessoa (ex: Luiza, Nalyne, Yara)..."
+                    value={debtorName}
+                    onChange={(e) => setDebtorName(e.target.value)}
+                    required={isThirdParty}
+                    className="w-full bg-[#111726] border border-amber-500/30 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                  />
                   <p className="text-[10px] text-amber-400/80">
-                    O sistema adicionará automaticamente esta quantia na aba de <strong>Recebíveis</strong> do ciclo atual!
+                    A notinha será sincronizada automaticamente na aba <strong>Notinhas a Receber</strong> com todas as suas parcelas!
                   </p>
                 </div>
               )}
@@ -326,7 +392,7 @@ export function NewTransactionModal({
               Cancelar
             </Button>
             <Button type="submit" size="sm" disabled={loading}>
-              {loading ? 'Salvando...' : 'Confirmar Lançamento'}
+              {loading ? 'Salvando parcelas...' : 'Confirmar Lançamento'}
             </Button>
           </div>
         </form>

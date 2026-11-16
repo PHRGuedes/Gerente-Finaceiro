@@ -34,8 +34,7 @@ export default async function DashboardPage() {
 
   const allTransactions = (txRows || []) as Transaction[]
 
-  // Filtrar ou calcular valores do ciclo atual
-  // Compras de crédito no ciclo atual (fechamento todo dia 04)
+  // Transações do ciclo atual
   const cycleTransactions = allTransactions.filter(
     (tx) => !tx.billing_cycle || tx.billing_cycle === billingCycle.cycleId
   )
@@ -55,20 +54,25 @@ export default async function DashboardPage() {
 
   const creditInvoiceTotal = ownExpense + thirdPartyExpense
 
-  // 3. Buscar Obrigações Fixas (ex: Conta Mãe)
+  // 3. Buscar Todos os Itens de Previsão Orçamentária (Fixas e Receitas)
   const { data: forecastRows } = await supabase
     .from('forecast_items')
     .select('*')
-    .eq('type', 'fixed_expense')
-    .eq('active', true)
+    .order('amount', { ascending: false })
 
-  const fixedItems = (forecastRows || []) as ForecastItem[]
+  const allForecastItems = (forecastRows || []) as ForecastItem[]
+
+  // Apenas as despesas fixas ativas
+  const fixedItems = allForecastItems.filter(
+    (item) => item.type === 'fixed_expense' && item.active
+  )
   const fixedTotal = fixedItems.reduce((acc, curr) => acc + Number(curr.amount), 0)
 
   // 4. Buscar Dívidas Informais (ex: Saldo devedor com o Vô)
   const { data: debtRows } = await supabase
     .from('informal_debts')
     .select('*')
+    .order('total_amount', { ascending: false })
 
   const debts = (debtRows || []) as InformalDebt[]
   const totalRemainingDebts = debts.reduce(
@@ -76,19 +80,25 @@ export default async function DashboardPage() {
     0
   )
 
-  // 5. Buscar Total de Notinhas a Receber no ciclo
+  // 5. Buscar Todas as Notinhas / Recebíveis (Atuais e Projetadas Futuras)
   const { data: recRows } = await supabase
     .from('receivables')
     .select('*')
-    .eq('status', 'pending')
+    .order('billing_cycle', { ascending: true })
 
-  const pendingReceivables = (recRows || []) as Receivable[]
-  const totalPendingReceivables = pendingReceivables.reduce(
+  const allReceivables = (recRows || []) as Receivable[]
+
+  // Notinhas pendentes do ciclo atual
+  const pendingInCurrentCycle = allReceivables.filter(
+    (r) => r.status === 'pending' && (!r.billing_cycle || r.billing_cycle === billingCycle.cycleId)
+  )
+
+  const totalPendingInCurrentCycle = pendingInCurrentCycle.reduce(
     (acc, curr) => acc + Number(curr.amount),
     0
   )
 
-  // 6. Buscar Categorias para mapear ícones e cores
+  // 6. Buscar Categorias
   const { data: categoryRows } = await supabase
     .from('categories')
     .select('*')
@@ -115,9 +125,11 @@ export default async function DashboardPage() {
           items: debts,
         },
         receivables: {
-          totalPending: totalPendingReceivables,
-          items: pendingReceivables,
+          totalPending: totalPendingInCurrentCycle,
+          items: pendingInCurrentCycle,
         },
+        allReceivables,
+        allForecastItems,
         transactions: allTransactions,
         categories,
       }}

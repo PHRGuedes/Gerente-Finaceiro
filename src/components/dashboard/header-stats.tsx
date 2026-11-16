@@ -11,6 +11,8 @@ import {
   ArrowUpRight,
   Receipt,
   Sparkles,
+  FileSpreadsheet,
+  FileDown,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -43,6 +45,8 @@ interface HeaderStatsProps {
   onOpenNewTransaction: () => void
   onOpenAmortizeDebt: (debt: InformalDebt) => void
   onOpenSettleReceivable: (rec: Receivable) => void
+  onOpenConciliateCsv?: () => void
+  onOpenExportPdf?: () => void
 }
 
 export function HeaderStats({
@@ -56,6 +60,8 @@ export function HeaderStats({
   onOpenNewTransaction,
   onOpenAmortizeDebt,
   onOpenSettleReceivable,
+  onOpenConciliateCsv,
+  onOpenExportPdf,
 }: HeaderStatsProps) {
   const isLowBalance = checkingBalance < 50.0
 
@@ -148,6 +154,30 @@ export function HeaderStats({
             </div>
           </div>
 
+          {/* Ações da Fatura: Conciliar CSV e Exportar PDF */}
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenConciliateCsv}
+              className="text-[10px] font-semibold border-violet-500/30 hover:bg-violet-500/20 text-violet-200 h-7 px-1.5"
+              title="Conciliar fatura Nubank via CSV"
+            >
+              <FileSpreadsheet className="h-3 w-3 mr-1 text-violet-400 shrink-0" />
+              <span className="truncate">Conciliar CSV</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenExportPdf}
+              className="text-[10px] font-semibold border-violet-500/30 hover:bg-violet-500/20 text-violet-200 h-7 px-1.5"
+              title="Exportar fatura em PDF"
+            >
+              <FileDown className="h-3 w-3 mr-1 text-violet-400 shrink-0" />
+              <span className="truncate">Exportar PDF</span>
+            </Button>
+          </div>
+
           {/* Botão Pagar Fatura */}
           <Button
             variant="outline"
@@ -194,11 +224,11 @@ export function HeaderStats({
         </CardContent>
       </Card>
 
-      {/* 4. Dívidas Informais (ex: Saldo devedor com o Vô) */}
+      {/* 4. Dívidas */}
       <Card className="border-cyan-500/20 bg-gradient-to-b from-[#0e1620] to-[#090f17]">
         <CardHeader className="p-4 pb-1 flex flex-row items-center justify-between">
           <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-            Dívidas Informais
+            Dívidas
           </span>
           <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
             <HandCoins className="h-4 w-4" />

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Fintech Manager | Controle Financeiro Pessoal',
-  description: 'Sistema moderno de controle financeiro pessoal, despesas, cartões, dívidas informais e previsão orçamentária.',
+  title: 'Controle Financeiro Pessoal',
+  description: 'Sistema moderno de controle financeiro pessoal, despesas, cartões, dívidas e previsão orçamentária.',
 }
 
 export default function RootLayout({

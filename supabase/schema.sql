@@ -253,3 +253,33 @@ CREATE POLICY "account_balances_policy_all"
   FOR ALL
   USING (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid())
   WITH CHECK (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid());
+
+
+-- ------------------------------------------------------------------------------
+-- 7. TABELA: poker_entries (Tracker e Bankroll de Poker Independente)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.poker_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  description TEXT NOT NULL,
+  game_type TEXT NOT NULL CHECK (game_type IN ('tournament', 'cash')),
+  entry_type TEXT NOT NULL CHECK (entry_type IN ('buy_in', 'cash_out')),
+  amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  location TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_poker_entries_date ON public.poker_entries(date DESC);
+CREATE INDEX IF NOT EXISTS idx_poker_entries_user ON public.poker_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_poker_entries_game_type ON public.poker_entries(game_type);
+
+ALTER TABLE public.poker_entries ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "poker_entries_policy_all"
+  ON public.poker_entries
+  FOR ALL
+  USING (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid())
+  WITH CHECK (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid());

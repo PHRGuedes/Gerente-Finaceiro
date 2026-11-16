@@ -30,6 +30,8 @@ import {
   TrendingUp,
   Laptop,
   Tag,
+  FileSpreadsheet,
+  FileDown,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -62,6 +64,8 @@ interface TransactionListProps {
   transactions: Transaction[]
   categories: Category[]
   cycleLabel: string
+  onOpenConciliateCsv?: () => void
+  onOpenExportPdf?: () => void
 }
 
 type FilterMethod = 'all' | 'pix_cash' | 'credit'
@@ -70,6 +74,8 @@ export function TransactionList({
   transactions,
   categories,
   cycleLabel,
+  onOpenConciliateCsv,
+  onOpenExportPdf,
 }: TransactionListProps) {
   const [filterMethod, setFilterMethod] = useState<FilterMethod>('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -166,16 +172,47 @@ export function TransactionList({
           </div>
         </div>
 
-        {/* Campo de Busca Rápida */}
-        <div className="relative mt-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Buscar por descrição, categoria ou amigo..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#111726]/80 border border-white/[0.08] rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50"
-          />
+        {/* Campo de Busca Rápida + Ações Fatura */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Buscar por descrição, categoria ou amigo..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-[#111726]/80 border border-white/[0.08] rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50"
+            />
+          </div>
+
+          {(onOpenConciliateCsv || onOpenExportPdf) && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onOpenConciliateCsv && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onOpenConciliateCsv}
+                  className="text-xs h-8 border-violet-500/30 text-violet-300 hover:bg-violet-500/20 flex items-center gap-1"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-violet-400" />
+                  <span className="hidden sm:inline">Conciliar CSV</span>
+                  <span className="sm:hidden">CSV</span>
+                </Button>
+              )}
+              {onOpenExportPdf && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onOpenExportPdf}
+                  className="text-xs h-8 border-violet-500/30 text-violet-300 hover:bg-violet-500/20 flex items-center gap-1"
+                >
+                  <FileDown className="h-3.5 w-3.5 text-violet-400" />
+                  <span className="hidden sm:inline">Exportar PDF</span>
+                  <span className="sm:hidden">PDF</span>
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </CardHeader>
 

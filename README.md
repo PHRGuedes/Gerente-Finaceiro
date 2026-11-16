@@ -51,6 +51,59 @@ O componente **Lançamento Rápido** fica fixado no topo do Dashboard e oferece 
 
 ---
 
+## 🚀 Etapa 4 - Motor de Parcelamentos e Notinhas a Receber
+
+1. **Motor de Parcelamentos no Crédito:**
+   - Ao lançar uma compra parcelada (ex: `Parcela 2/10` ou `1/3`), o sistema registra a parcela atual no ciclo vigente e **projeta e cria automaticamente todas as parcelas futuras** nos próximos ciclos de fatura (fechamento todo dia 04) até a última (`10/10`), encerrando automaticamente após a quitação.
+   - Suporte completo no **Parser Inteligente** (ex: `85,00 Vestido Luiza 2/10 credito` ou `3x de 50`) e no **Formulário de Lançamento**.
+
+2. **Aba Dedicada: Notinhas a Receber (Terceiros):**
+   - Acompanhamento detalhado por pessoa (ex: **Luiza, Nalyne, Yara, Marcos, Lucas**) com avatares e contadores.
+   - Filtros por **Pessoa**, **Status** (Pendentes / Recebidas) e **Ciclo** (Fatura Atual vs Faturas Futuras).
+   - **Botão "Marcar como Recebido (Pix)":** Ao dar baixa em uma notinha, o sistema atualiza o status para `paid` e **soma o valor diretamente ao Saldo Principal (Conta Corrente / Pix)**, registrando o comprovante da entrada.
+   - **Modal "+ Nova Notinha":** Cadastro expresso de recebíveis parcelados com sugestões rápidas de contatos.
+
+---
+
+## 🚀 Etapa 5 - Previsão do Próximo Ciclo e Gestão de Dívidas Informais
+
+1. **Gestão de Dívidas Informais (ex: Vô):**
+   - Cards detalhados com **Valor Original**, **Total Já Abatido** e **Saldo Devedor Atual**.
+   - Barra visual de progresso de quitação e acompanhamento por credor.
+   - **Botão "Registrar Abatimento (Pix)":** Ao informar um valor (ex: R$ 400,00), o sistema desconta diretamente do **Saldo Principal (Conta Corrente / Pix)**, reduz o saldo devedor da dívida e registra o lançamento para conciliação.
+   - Suporte a cadastro de novas dívidas informais e notas de histórico.
+
+2. **Simulador / Projeção do Próximo Ciclo:**
+   - **Tabela Editável de Receitas Previstas:** Gerencie itens como *Salário + Diária, Pensão, Dias fixos de Poker, Comissão variável* com edição inline de valores e alternância entre receitas fixas e variáveis.
+   - **Soma Automática das Notinhas Pendentes:** O sistema busca automaticamente todas as notinhas e parcelas pendentes (ex: Luiza, Nalyne, Yara) que vencem no ciclo projetado.
+   - **Cálculo Automático em Tempo Real (Fórmula):**
+     $$\text{Saldo Atual} + \text{Receitas Previstas (com Notinhas)} - (\text{Fatura Crédito} + \text{Contas Fixas}) = \text{Saldo Livre Projetado (Antes de Dívidas)}$$
+     $$\text{Saldo Livre Projetado (Após Quitar Dívidas)} = \text{Saldo Livre (Antes)} - \text{Total Dívidas Informais Restantes}$$
+   - Indicadores visuais inteligentes de **Superávit** (verde neon) ou **Déficit** (alerta vermelho) para planejamento antecipado do mês.
+
+---
+
+## 🚀 Etapa 6 - Conciliação de Fatura via CSV (Nubank) e Exportação em PDF
+
+1. **Conciliador de CSV do Nubank:**
+   - **Upload Inteligente de Arquivo CSV:** Suporta arquivos `.csv` padrão exportados pelo Nubank (`date,title,amount`). Inclui também o botão *"Carregar Exemplo Nubank"* para testes imediatos sem precisar de arquivo físico.
+   - **Detecção de Baixas de Fatura:** Linhas negativas (`Pagamento recebido` ou `Pagamento de fatura`) são automaticamente identificadas como pagamentos de fatura, evitando duplicidade e alertando o usuário.
+   - **Cruzamento Automático com o Banco (Matching):** Compara compras do CSV com as compras de crédito cadastradas no banco (mesmo valor e janela de até 4 dias de tolerância de data).
+   - **Tabela de Revisão em Duas Abas:**
+     - **Já Conciliados (✅):** Itens identificados no sistema que não serão duplicados.
+     - **Pendentes de Identificação (⚠️):** Novos lançamentos com limpeza automática de nomes de estabelecimentos (ex: `Ifood *Restaurante` → `Ifood`), inferência automática de categoria e campos editáveis inline (nome amigável, categoria, marcação de Notinha com nome do devedor).
+   - **Importação em Lote:** Seleção rápida ("Selecionar Todos") e importação direta para o ciclo de fatura com criação dos recebíveis correspondentes.
+
+2. **Exportação de Fatura em PDF:**
+   - **Cabeçalho Executivo Fintech:** Design clean e profissional com identificação do ciclo, data de fechamento e data de geração.
+   - **Resumo Consolidado de Totais:** Destaque para o **Total da Fatura**, **Meu Gasto Próprio** e **Notinhas (Terceiros)**.
+   - **Dois Modos de Visualização Selecionáveis:**
+     - **Ordenado por Data (`by_date`):** Lista cronológica detalhada de cada compra com data, estabelecimento, categoria, tipo/responsável e valor.
+     - **Agrupado por Categoria (`by_category`):** Tabela analítica com o total gasto e a participação percentual (%) de cada categoria sobre o total da fatura, seguida pelo detalhamento dos lançamentos.
+   - **Geração e Download Imediato:** Exporta o arquivo `fatura-[ciclo].pdf` instantaneamente pelo navegador via `jspdf` e `jspdf-autotable`.
+
+---
+
 ## 📂 Estrutura de Diretórios
 
 ```
