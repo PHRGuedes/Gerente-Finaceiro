@@ -32,6 +32,25 @@ Sistema web moderno de controle financeiro pessoal construído com **Next.js (Ap
 
 ---
 
+## 🚀 Etapa 3 - Lançamento Rápido Inteligente (Chat Parser)
+
+O componente **Lançamento Rápido** fica fixado no topo do Dashboard e oferece dois modos de uso:
+
+1. **⚡ Texto Inteligente (Parser em Linguagem Natural):**
+   - **Formato Estruturado em Bloco:**
+     `Tipo: Despesa | Descrição: 2 Açaís | Valor: 25,82 | Data: 11/11 | Forma de pagamento: Crédito | Categoria: Lazer`
+   - **Frases Curtas Naturais:**
+     - `+100 Croupier freeroll pix` → Receita de R$ 100,00 no Pix (Categoria: Poker).
+     - `12,90 Barrinha Spincoffee alimentacao credito` → Despesa de R$ 12,90 no Crédito (Categoria: Alimentação).
+   - **Sessões de Poker (Entrada e Saída Juntas):**
+     - `cash poker -90 +151` → Cria automaticamente a despesa de Buy-in (R$ 90,00) e a receita de Cashout (R$ 151,00) no Pix e exibe o Lucro Líquido (+R$ 61,00) antes de salvar.
+   - **Pré-visualização Instantânea:** Conforme você digita, o sistema exibe um card com os dados interpretados e permite salvar com `Enter ↵`.
+
+2. **📝 Formulário Expresso:**
+   - Formulário horizontal rápido com seleção de tipo, descrição, valor, categoria, meio de pagamento e compra de terceiros (notinha).
+
+---
+
 ## 📂 Estrutura de Diretórios
 
 ```

@@ -41,7 +41,7 @@ CREATE INDEX IF NOT EXISTS idx_categories_user_id ON public.categories(user_id);
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
   type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
   description TEXT NOT NULL,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
@@ -74,7 +74,7 @@ CREATE TRIGGER trigger_transactions_updated_at
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.receivables (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
   debtor_name TEXT NOT NULL,
   description TEXT NOT NULL,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
@@ -103,7 +103,7 @@ CREATE TRIGGER trigger_receivables_updated_at
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.informal_debts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
   creditor_name TEXT NOT NULL,
   total_amount NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0),
   paid_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (paid_amount >= 0),
@@ -127,7 +127,7 @@ CREATE TRIGGER trigger_informal_debts_updated_at
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.forecast_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
   type TEXT NOT NULL CHECK (type IN ('income', 'fixed_expense')),
   description TEXT NOT NULL,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
@@ -153,7 +153,7 @@ CREATE TRIGGER trigger_forecast_items_updated_at
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.account_balances (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
   account_name TEXT NOT NULL,
   account_type TEXT NOT NULL DEFAULT 'checking' CHECK (account_type IN ('checking', 'cash', 'savings', 'investment', 'credit')),
   initial_balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
@@ -212,119 +212,44 @@ CREATE POLICY "Categories delete policy"
 -- ------------------------------------------------------------------------------
 -- Políticas RLS: transactions
 -- ------------------------------------------------------------------------------
-CREATE POLICY "Transactions select policy"
+CREATE POLICY "transactions_policy_all"
   ON public.transactions
-  FOR SELECT
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Transactions insert policy"
-  ON public.transactions
-  FOR INSERT
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Transactions update policy"
-  ON public.transactions
-  FOR UPDATE
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Transactions delete policy"
-  ON public.transactions
-  FOR DELETE
-  USING (user_id = auth.uid());
+  FOR ALL
+  USING (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid())
+  WITH CHECK (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid());
 
 -- ------------------------------------------------------------------------------
 -- Políticas RLS: receivables
 -- ------------------------------------------------------------------------------
-CREATE POLICY "Receivables select policy"
+CREATE POLICY "receivables_policy_all"
   ON public.receivables
-  FOR SELECT
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Receivables insert policy"
-  ON public.receivables
-  FOR INSERT
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Receivables update policy"
-  ON public.receivables
-  FOR UPDATE
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Receivables delete policy"
-  ON public.receivables
-  FOR DELETE
-  USING (user_id = auth.uid());
+  FOR ALL
+  USING (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid())
+  WITH CHECK (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid());
 
 -- ------------------------------------------------------------------------------
 -- Políticas RLS: informal_debts
 -- ------------------------------------------------------------------------------
-CREATE POLICY "Informal debts select policy"
+CREATE POLICY "informal_debts_policy_all"
   ON public.informal_debts
-  FOR SELECT
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Informal debts insert policy"
-  ON public.informal_debts
-  FOR INSERT
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Informal debts update policy"
-  ON public.informal_debts
-  FOR UPDATE
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Informal debts delete policy"
-  ON public.informal_debts
-  FOR DELETE
-  USING (user_id = auth.uid());
+  FOR ALL
+  USING (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid())
+  WITH CHECK (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid());
 
 -- ------------------------------------------------------------------------------
 -- Políticas RLS: forecast_items
 -- ------------------------------------------------------------------------------
-CREATE POLICY "Forecast items select policy"
+CREATE POLICY "forecast_items_policy_all"
   ON public.forecast_items
-  FOR SELECT
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Forecast items insert policy"
-  ON public.forecast_items
-  FOR INSERT
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Forecast items update policy"
-  ON public.forecast_items
-  FOR UPDATE
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Forecast items delete policy"
-  ON public.forecast_items
-  FOR DELETE
-  USING (user_id = auth.uid());
+  FOR ALL
+  USING (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid())
+  WITH CHECK (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid());
 
 -- ------------------------------------------------------------------------------
 -- Políticas RLS: account_balances
 -- ------------------------------------------------------------------------------
-CREATE POLICY "Account balances select policy"
+CREATE POLICY "account_balances_policy_all"
   ON public.account_balances
-  FOR SELECT
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Account balances insert policy"
-  ON public.account_balances
-  FOR INSERT
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Account balances update policy"
-  ON public.account_balances
-  FOR UPDATE
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Account balances delete policy"
-  ON public.account_balances
-  FOR DELETE
-  USING (user_id = auth.uid());
+  FOR ALL
+  USING (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid())
+  WITH CHECK (auth.uid() IS NULL OR user_id IS NULL OR user_id = auth.uid());

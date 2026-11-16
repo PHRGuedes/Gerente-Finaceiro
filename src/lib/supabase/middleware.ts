@@ -4,6 +4,7 @@ import { Database } from '@/types/database.types'
 
 /**
  * Atualiza e renova a sessão de autenticação do Supabase nas requisições Next.js via Middleware.
+ * Suporta tanto NEXT_PUBLIC_SUPABASE_ANON_KEY quanto NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -11,7 +12,9 @@ export async function updateSession(request: NextRequest) {
   })
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return supabaseResponse
