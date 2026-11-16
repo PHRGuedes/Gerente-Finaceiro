@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0d14;
+  --foreground: #f1f5f9;
+  --card: #111726;
+  --card-foreground: #f8fafc;
+  --border: rgba(255, 255, 255, 0.08);
+  --primary: #10b981;
+  --primary-foreground: #ffffff;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #f8fafc;
+  --destructive: #f43f5e;
+  --destructive-foreground: #ffffff;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  color-scheme: dark;
+}
+
+/* Custom scrollbar for dark mode */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0d14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
