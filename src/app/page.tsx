@@ -67,13 +67,22 @@ export default async function DashboardPage() {
     (tx) => tx.type === 'expense' && tx.payment_method === 'credit'
   )
 
-  const ownExpense = creditExpenses
-    .filter((tx) => !tx.is_third_party)
-    .reduce((acc, curr) => acc + Number(curr.amount), 0)
+  let ownExpense = 0
+  let thirdPartyExpense = 0
 
-  const thirdPartyExpense = creditExpenses
-    .filter((tx) => tx.is_third_party)
-    .reduce((acc, curr) => acc + Number(curr.amount), 0)
+  for (const tx of creditExpenses) {
+    const totalAmount = Number(tx.amount)
+    if (tx.is_third_party) {
+      const tpAmount =
+        tx.third_party_amount !== null && tx.third_party_amount !== undefined
+          ? Number(tx.third_party_amount)
+          : totalAmount
+      thirdPartyExpense += tpAmount
+      ownExpense += Math.max(0, totalAmount - tpAmount)
+    } else {
+      ownExpense += totalAmount
+    }
+  }
 
   const creditInvoiceTotal = ownExpense + thirdPartyExpense
 

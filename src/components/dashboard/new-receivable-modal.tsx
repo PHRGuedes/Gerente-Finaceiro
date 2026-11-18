@@ -169,25 +169,78 @@ export function NewReceivableModal({
               <label className="block text-[11px] font-medium text-slate-400 mb-1">
                 Parcela Atual
               </label>
-              <input
-                type="number"
-                min="1"
-                value={installmentCurrent}
-                onChange={(e) => setInstallmentCurrent(e.target.value)}
-                className="w-full bg-[#111726] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"
-              />
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = Math.max(1, (parseInt(installmentCurrent, 10) || 1) - 1)
+                    setInstallmentCurrent(String(val))
+                  }}
+                  className="h-8 w-8 rounded-l-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max={installmentTotal}
+                  value={installmentCurrent}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  onChange={(e) => setInstallmentCurrent(e.target.value)}
+                  className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tot = parseInt(installmentTotal, 10) || 1
+                    const val = Math.min(tot, (parseInt(installmentCurrent, 10) || 1) + 1)
+                    setInstallmentCurrent(String(val))
+                  }}
+                  className="h-8 w-8 rounded-r-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                >
+                  +
+                </button>
+              </div>
             </div>
+
             <div>
               <label className="block text-[11px] font-medium text-slate-400 mb-1">
                 Total de Parcelas
               </label>
-              <input
-                type="number"
-                min="1"
-                value={installmentTotal}
-                onChange={(e) => setInstallmentTotal(e.target.value)}
-                className="w-full bg-[#111726] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"
-              />
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = Math.max(1, (parseInt(installmentTotal, 10) || 1) - 1)
+                    setInstallmentTotal(String(val))
+                    if ((parseInt(installmentCurrent, 10) || 1) > val) {
+                      setInstallmentCurrent(String(val))
+                    }
+                  }}
+                  className="h-8 w-8 rounded-l-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max="48"
+                  value={installmentTotal}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  onChange={(e) => setInstallmentTotal(e.target.value)}
+                  className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = (parseInt(installmentTotal, 10) || 1) + 1
+                    setInstallmentTotal(String(val))
+                  }}
+                  className="h-8 w-8 rounded-r-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 

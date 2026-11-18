@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   Wallet,
   PlusCircle,
@@ -18,6 +18,9 @@ import {
   Spade,
   LogOut,
   User as UserIcon,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from 'lucide-react'
 import { signOutAction } from '@/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -34,7 +37,7 @@ import { SettleReceivableModal } from '@/components/dashboard/settle-receivable-
 import { AmortizeDebtModal } from '@/components/dashboard/amortize-debt-modal'
 import { CSVConciliatorModal } from '@/components/dashboard/csv-conciliator-modal'
 import { ExportPdfModal } from '@/components/dashboard/export-pdf-modal'
-import { BillingCycleInfo } from '@/lib/billing'
+import { BillingCycleInfo, addMonthsToCycle, getCycleForDate } from '@/lib/billing'
 import {
   Transaction,
   Category,
@@ -83,7 +86,9 @@ interface DashboardShellProps {
 
 export function DashboardShell({ initialData }: DashboardShellProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview')
+  const [cycleOffset, setCycleOffset] = useState<number>(0)
   const [isNewTxOpen, setIsNewTxOpen] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [isPayInvoiceOpen, setIsPayInvoiceOpen] = useState(false)
   const [selectedReceivable, setSelectedReceivable] = useState<Receivable | null>(null)
   const [selectedDebt, setSelectedDebt] = useState<InformalDebt | null>(null)
@@ -93,10 +98,7 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
   const {
     checkingBalance,
     billingCycle,
-    creditInvoice,
-    fixedObligations,
     informalDebts,
-    receivables,
     allReceivables,
     allForecastItems,
     transactions,
@@ -105,8 +107,67 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
     currentUser,
   } = initialData
 
+  // Ciclo atualmente selecionado pelo usuário (0 = vigente, -1 = anterior, +1 = próximo...)
+  const activeCycle = useMemo(() => {
+    if (cycleOffset === 0) return billingCycle
+    return addMonthsToCycle(billingCycle.cycleId, cycleOffset)
+  }, [billingCycle, cycleOffset])
+
+  // Transações pertencentes ao ciclo selecionado
+  const activeCycleTransactions = useMemo(() => {
+    return transactions.filter((tx) => {
+      const txCycle = tx.billing_cycle || getCycleForDate(tx.date)
+      return txCycle === activeCycle.cycleId
+    })
+  }, [transactions, activeCycle.cycleId])
+
+  // Cálculo dinâmico da Fatura de Crédito do ciclo selecionado
+  const activeCreditInvoice = useMemo(() => {
+    const creditExpenses = activeCycleTransactions.filter(
+      (tx) => tx.type === 'expense' && tx.payment_method === 'credit'
+    )
+    let ownExpense = 0
+    let thirdPartyExpense = 0
+
+    for (const tx of creditExpenses) {
+      const totalAmount = Number(tx.amount)
+      if (tx.is_third_party) {
+        const tpAmount =
+          tx.third_party_amount !== null && tx.third_party_amount !== undefined
+            ? Number(tx.third_party_amount)
+            : totalAmount
+        thirdPartyExpense += tpAmount
+        ownExpense += Math.max(0, totalAmount - tpAmount)
+      } else {
+        ownExpense += totalAmount
+      }
+    }
+
+    return {
+      total: ownExpense + thirdPartyExpense,
+      ownExpense,
+      thirdPartyExpense,
+    }
+  }, [activeCycleTransactions])
+
+  // Notinhas pendentes do ciclo selecionado
+  const activeReceivables = useMemo(() => {
+    const pendingInCycle = allReceivables.filter(
+      (r) =>
+        r.status === 'pending' &&
+        (!r.billing_cycle || r.billing_cycle === activeCycle.cycleId)
+    )
+    const totalPending = pendingInCycle.reduce((acc, curr) => acc + Number(curr.amount), 0)
+    return {
+      totalPending,
+      items: pendingInCycle,
+    }
+  }, [allReceivables, activeCycle.cycleId])
+
   const pendingNotinhasCount = allReceivables.filter((r) => r.status === 'pending').length
-  const currentCreditTransactions = transactions.filter((t) => t.payment_method === 'credit')
+  const currentCreditTransactions = activeCycleTransactions.filter(
+    (t) => t.payment_method === 'credit'
+  )
 
   return (
     <div className="min-h-screen bg-[#07090e] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.07),rgba(255,255,255,0))] text-slate-100 flex flex-col">
@@ -199,17 +260,58 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Ciclo Info Badge (h-9 uniforme, responsivo e sem quebra de texto) */}
-            <div className="hidden md:inline-flex items-center gap-2 text-xs text-slate-300 bg-[#111726]/90 border border-white/[0.08] px-3.5 h-9 rounded-xl font-mono whitespace-nowrap shrink-0">
-              <span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse shrink-0"></span>
-              <span className="hidden 2xl:inline">{billingCycle.label}</span>
-              <span className="2xl:hidden">Fatura 04/{billingCycle.cycleId.split('-')[1]}</span>
+            {/* Seletor Interativo de Ciclo / Mês (h-9 uniforme) */}
+            <div className="hidden md:inline-flex items-center gap-1 text-xs text-slate-300 bg-[#111726]/90 border border-white/[0.08] px-1.5 h-9 rounded-xl font-mono whitespace-nowrap shrink-0">
+              <button
+                type="button"
+                onClick={() => setCycleOffset((prev) => prev - 1)}
+                className="h-6 w-6 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+                title="Ciclo / Mês Anterior"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+
+              <div className="flex items-center gap-1.5 px-1.5">
+                <span
+                  className={`h-2 w-2 rounded-full shrink-0 ${
+                    cycleOffset === 0 ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                  }`}
+                />
+                <span className="hidden 2xl:inline">{activeCycle.label}</span>
+                <span className="2xl:hidden">
+                  Fatura 04/{activeCycle.cycleId.split('-')[1]}/{activeCycle.cycleId.split('-')[0].slice(2)}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCycleOffset((prev) => prev + 1)}
+                className="h-6 w-6 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+                title="Próximo Ciclo / Mês"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+
+              {cycleOffset !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCycleOffset(0)}
+                  className="h-6 px-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] font-sans font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Voltar para a Fatura Atual"
+                >
+                  <RotateCcw className="h-2.5 w-2.5" />
+                  <span>Atual</span>
+                </button>
+              )}
             </div>
 
             {/* Botão Novo Lançamento (h-9 uniforme com os demais botões) */}
             <button
               type="button"
-              onClick={() => setIsNewTxOpen(true)}
+              onClick={() => {
+                setEditingTransaction(null)
+                setIsNewTxOpen(true)
+              }}
               className="h-9 px-3 sm:px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs rounded-xl shadow-md shadow-emerald-500/20 inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-[0.98] cursor-pointer"
             >
               <PlusCircle className="h-4 w-4 text-black shrink-0" />
@@ -248,88 +350,57 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
             )}
           </div>
         </div>
-
-        {/* Abas Secundárias Mobile e Tablets com Scroll Suave (touch-friendly h-9) */}
-        <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-none px-3.5 py-2 bg-[#090d17] border-t border-white/[0.06] text-xs">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
-              activeTab === 'overview'
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/35 font-semibold shadow-sm'
-                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
-            }`}
-          >
-            <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
-            <span>Visão Geral</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('notinhas')}
-            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
-              activeTab === 'notinhas'
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/35 font-semibold shadow-sm'
-                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
-            }`}
-          >
-            <Users className="h-3.5 w-3.5 shrink-0" />
-            <span>Notinhas</span>
-            {pendingNotinhasCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold leading-none">
-                {pendingNotinhasCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('forecast')}
-            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
-              activeTab === 'forecast'
-                ? 'bg-teal-500/20 text-teal-300 border-teal-500/35 font-semibold shadow-sm'
-                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
-            }`}
-          >
-            <TrendingUp className="h-3.5 w-3.5 shrink-0" />
-            <span>Previsão</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('debts')}
-            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
-              activeTab === 'debts'
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/35 font-semibold shadow-sm'
-                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
-            }`}
-          >
-            <HandCoins className="h-3.5 w-3.5 shrink-0" />
-            <span>Dívidas</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('poker')}
-            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
-              activeTab === 'poker'
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/35 font-semibold shadow-sm'
-                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
-            }`}
-          >
-            <Spade className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-            <span>Poker</span>
-          </button>
-        </div>
       </header>
 
-      {/* Main Content Area (otimizado com padding respirável em celulares) */}
-      <main className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 flex-1 w-full">
-        {/* Banner Informativo da Regra Financeira */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-[#0e1626] to-violet-950/30 border border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs text-slate-300">
+      {/* Main Content Area (pb-24 no mobile para dar espaço à Bottom Navigation Bar estilo app de banco) */}
+      <main className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-8 space-y-4 sm:space-y-6 flex-1 w-full">
+        {/* Banner Informativo + Seletor de Ciclo Mobile */}
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-[#0e1626] to-teal-950/30 border border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs text-slate-300">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-emerald-400 shrink-0" />
             <span>
               <strong>Regra Financeira:</strong> Saldo em conta alterado via <strong>Pix/Dinheiro</strong>. Cartão de <strong>Crédito</strong> acumula na fatura com fechamento todo <strong>dia 04</strong>.
             </span>
           </div>
-          <div className="text-[11px] text-slate-400 shrink-0 font-mono">
-            Fechamento em {billingCycle.daysUntilClosing} dias
+
+          <div className="flex items-center justify-between md:justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/[0.06] shrink-0">
+            {/* Seletor de Ciclo visível no Celular */}
+            <div className="md:hidden inline-flex items-center gap-1 bg-[#111726] border border-white/10 px-1.5 h-8 rounded-xl font-mono text-[11px]">
+              <button
+                type="button"
+                onClick={() => setCycleOffset((prev) => prev - 1)}
+                className="h-6 w-6 rounded-lg active:bg-white/10 flex items-center justify-center text-slate-300"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <span className="px-1 text-white font-semibold whitespace-nowrap">
+                Fatura 04/{activeCycle.cycleId.split('-')[1]}/{activeCycle.cycleId.split('-')[0].slice(2)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCycleOffset((prev) => prev + 1)}
+                className="h-6 w-6 rounded-lg active:bg-white/10 flex items-center justify-center text-slate-300"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+              {cycleOffset !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCycleOffset(0)}
+                  className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-sans font-bold"
+                >
+                  Atual
+                </button>
+              )}
+            </div>
+
+            <div className="text-[11px] text-slate-400 shrink-0 font-mono whitespace-nowrap">
+              {cycleOffset === 0
+                ? `Fechamento em ${activeCycle.daysUntilClosing} dias`
+                : cycleOffset < 0
+                ? 'Ciclo Anterior'
+                : 'Fatura Futura Projetada'}
+            </div>
           </div>
         </div>
 
@@ -339,12 +410,15 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
             {/* 1. Cards do Topo (Os KPIs essenciais) */}
             <HeaderStats
               checkingBalance={checkingBalance}
-              billingCycle={billingCycle}
-              creditInvoice={creditInvoice}
+              billingCycle={activeCycle}
+              creditInvoice={activeCreditInvoice}
               informalDebts={informalDebts}
-              receivables={receivables}
+              receivables={activeReceivables}
               onOpenPayInvoice={() => setIsPayInvoiceOpen(true)}
-              onOpenNewTransaction={() => setIsNewTxOpen(true)}
+              onOpenNewTransaction={() => {
+                setEditingTransaction(null)
+                setIsNewTxOpen(true)
+              }}
               onOpenAmortizeDebt={(debt) => {
                 setSelectedDebt(debt)
                 setActiveTab('debts')
@@ -359,18 +433,22 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
               {/* Listagem com Filtros (Ocupa 2 colunas) */}
               <div className="lg:col-span-2">
                 <TransactionList
-                  transactions={transactions}
+                  transactions={activeCycleTransactions}
                   categories={categories}
-                  cycleLabel={billingCycle.label}
+                  cycleLabel={activeCycle.label}
                   onOpenConciliateCsv={() => setIsCsvModalOpen(true)}
                   onOpenExportPdf={() => setIsPdfModalOpen(true)}
+                  onEditTransaction={(tx) => {
+                    setEditingTransaction(tx)
+                    setIsNewTxOpen(true)
+                  }}
                 />
               </div>
 
               {/* Gráfico / Resumo Visual de Gastos (Ocupa 1 coluna) */}
               <div className="lg:col-span-1">
                 <CategoryChart
-                  transactions={transactions}
+                  transactions={activeCycleTransactions}
                   categories={categories}
                 />
               </div>
@@ -382,8 +460,8 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
         {activeTab === 'notinhas' && (
           <ReceivablesSection
             receivables={allReceivables}
-            currentCycleId={billingCycle.cycleId}
-            currentCycleLabel={billingCycle.label}
+            currentCycleId={activeCycle.cycleId}
+            currentCycleLabel={activeCycle.label}
           />
         )}
 
@@ -391,11 +469,11 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
         {activeTab === 'forecast' && (
           <ForecastSimulator
             checkingBalance={checkingBalance}
-            billingCycle={billingCycle}
+            billingCycle={activeCycle}
             forecastItems={allForecastItems}
             informalDebts={informalDebts.items}
             allReceivables={allReceivables}
-            creditInvoiceTotal={creditInvoice.total}
+            creditInvoiceTotal={activeCreditInvoice.total}
           />
         )}
 
@@ -413,22 +491,109 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
         )}
       </main>
 
+      {/* BARRA DE NAVEGAÇÃO INFERIOR FIXA NO CELULAR (ESTILO APP DE BANCO) */}
+      <nav
+        aria-label="Navegação Mobile"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0b0f19]/95 backdrop-blur-xl border-t border-white/[0.08] px-2 py-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.6)]"
+      >
+        <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'overview'
+                ? 'bg-emerald-500/15 text-emerald-300 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <LayoutDashboard className="h-4 w-4 mb-0.5 shrink-0" />
+            <span className="text-[10px] leading-tight whitespace-nowrap">Início</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('notinhas')}
+            className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'notinhas'
+                ? 'bg-amber-500/15 text-amber-300 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className="relative">
+              <Users className="h-4 w-4 mb-0.5 shrink-0" />
+              {pendingNotinhasCount > 0 && (
+                <span className="absolute -top-1.5 -right-3 text-[9px] px-1 min-w-[16px] h-4 rounded-full font-mono bg-amber-500 text-black font-extrabold flex items-center justify-center leading-none">
+                  {pendingNotinhasCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] leading-tight whitespace-nowrap">Notinhas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('forecast')}
+            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'forecast'
+                ? 'bg-teal-500/15 text-teal-300 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <TrendingUp className="h-4 w-4 mb-0.5 shrink-0" />
+            <span className="text-[10px] leading-tight whitespace-nowrap">Previsão</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('debts')}
+            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'debts'
+                ? 'bg-cyan-500/15 text-cyan-300 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <HandCoins className="h-4 w-4 mb-0.5 shrink-0" />
+            <span className="text-[10px] leading-tight whitespace-nowrap">Dívidas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('poker')}
+            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'poker'
+                ? 'bg-emerald-500/20 text-emerald-300 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Spade className="h-4 w-4 mb-0.5 text-emerald-400 shrink-0" />
+            <span className="text-[10px] leading-tight whitespace-nowrap">Poker</span>
+          </button>
+        </div>
+      </nav>
+
       {/* Modals Globais */}
       <NewTransactionModal
+        key={editingTransaction?.id || (isNewTxOpen ? `new-tx-${activeCycle.cycleId}` : 'closed-tx')}
         isOpen={isNewTxOpen}
-        onClose={() => setIsNewTxOpen(false)}
+        onClose={() => {
+          setIsNewTxOpen(false)
+          setEditingTransaction(null)
+        }}
         categories={categories}
+        editingTransaction={editingTransaction}
+        currentCycleId={activeCycle.cycleId}
+        currentCycleLabel={activeCycle.label}
       />
 
       <PayInvoiceModal
         isOpen={isPayInvoiceOpen}
         onClose={() => setIsPayInvoiceOpen(false)}
-        cycleId={billingCycle.cycleId}
-        cycleLabel={billingCycle.label}
+        cycleId={activeCycle.cycleId}
+        cycleLabel={activeCycle.label}
         checkingBalance={checkingBalance}
-        invoiceTotal={creditInvoice.total}
-        ownExpense={creditInvoice.ownExpense}
-        thirdPartyExpense={creditInvoice.thirdPartyExpense}
+        invoiceTotal={activeCreditInvoice.total}
+        ownExpense={activeCreditInvoice.ownExpense}
+        thirdPartyExpense={activeCreditInvoice.thirdPartyExpense}
       />
 
       <SettleReceivableModal
@@ -448,20 +613,20 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
         onClose={() => setIsCsvModalOpen(false)}
         existingTransactions={transactions}
         categories={categories}
-        currentCycleId={billingCycle.cycleId}
-        currentCycleLabel={billingCycle.label}
+        currentCycleId={activeCycle.cycleId}
+        currentCycleLabel={activeCycle.label}
       />
 
       {/* Etapa 6: Exportação de Fatura em PDF */}
       <ExportPdfModal
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
-        cycle={billingCycle}
+        cycle={activeCycle}
         creditTransactions={currentCreditTransactions}
         totals={{
-          general: creditInvoice.total,
-          ownExpense: creditInvoice.ownExpense,
-          thirdParty: creditInvoice.thirdPartyExpense,
+          general: activeCreditInvoice.total,
+          ownExpense: activeCreditInvoice.ownExpense,
+          thirdParty: activeCreditInvoice.thirdPartyExpense,
         }}
       />
     </div>

@@ -87,7 +87,11 @@ export function generateInvoicePdf(data: InvoicePdfData) {
       formatDate(tx.date),
       tx.description,
       tx.category,
-      tx.is_third_party ? `Notinha: ${tx.debtor_name || 'Terceiro'}` : 'Gasto Próprio',
+      tx.is_third_party
+        ? tx.third_party_amount && Number(tx.third_party_amount) < Number(tx.amount)
+          ? `Dividido (${tx.debtor_name || 'Terceiro'}: ${formatCurrency(Number(tx.third_party_amount))})`
+          : `Notinha: ${tx.debtor_name || 'Terceiro'}`
+        : 'Gasto Próprio',
       formatCurrency(Number(tx.amount)),
     ])
 
@@ -181,7 +185,11 @@ export function generateInvoicePdf(data: InvoicePdfData) {
           c.category,
           formatDate(tx.date),
           tx.description,
-          tx.is_third_party ? `Notinha: ${tx.debtor_name || 'Terceiro'}` : 'Gasto Próprio',
+          tx.is_third_party
+            ? tx.third_party_amount && Number(tx.third_party_amount) < Number(tx.amount)
+              ? `Dividido (${tx.debtor_name || 'Terceiro'}: ${formatCurrency(Number(tx.third_party_amount))})`
+              : `Notinha: ${tx.debtor_name || 'Terceiro'}`
+            : 'Gasto Próprio',
           formatCurrency(Number(tx.amount)),
         ])
       })

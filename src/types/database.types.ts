@@ -63,6 +63,7 @@ export interface Database {
           category: string
           is_third_party: boolean
           debtor_name: string | null
+          third_party_amount: number | null
           installment_current: number
           installment_total: number
           billing_cycle: string | null
@@ -80,6 +81,7 @@ export interface Database {
           category: string
           is_third_party?: boolean
           debtor_name?: string | null
+          third_party_amount?: number | null
           installment_current?: number
           installment_total?: number
           billing_cycle?: string | null
@@ -97,6 +99,7 @@ export interface Database {
           category?: string
           is_third_party?: boolean
           debtor_name?: string | null
+          third_party_amount?: number | null
           installment_current?: number
           installment_total?: number
           billing_cycle?: string | null

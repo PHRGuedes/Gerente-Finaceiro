@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Wallet,
   CreditCard,
@@ -13,6 +13,9 @@ import {
   Sparkles,
   FileSpreadsheet,
   FileDown,
+  Edit2,
+  Check,
+  X,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import { BillingCycleInfo } from '@/lib/billing'
 import { AccountBalance, ForecastItem, InformalDebt, Receivable } from '@/types/finance'
+import { setCheckingBalanceAction } from '@/actions/finance'
 
 interface HeaderStatsProps {
   checkingBalance: number
@@ -63,6 +67,28 @@ export function HeaderStats({
   onOpenExportPdf,
 }: HeaderStatsProps) {
   const isLowBalance = checkingBalance < 50.0
+  const [isEditingBalance, setIsEditingBalance] = useState(false)
+  const [balanceInput, setBalanceInput] = useState('')
+  const [savingBalance, setSavingBalance] = useState(false)
+
+  const handleOpenEditBalance = () => {
+    setBalanceInput(checkingBalance.toFixed(2).replace('.', ','))
+    setIsEditingBalance(true)
+  }
+
+  const handleSaveBalance = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const parsed = parseFloat(balanceInput.replace(/\./g, '').replace(',', '.'))
+    if (isNaN(parsed)) return
+
+    setSavingBalance(true)
+    try {
+      await setCheckingBalanceAction(parsed)
+      setIsEditingBalance(false)
+    } finally {
+      setSavingBalance(false)
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -85,27 +111,75 @@ export function HeaderStats({
           <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
             Saldo em Conta
           </span>
-          <div
-            className={`p-2 rounded-xl ${
-              isLowBalance
-                ? 'bg-rose-500/20 text-rose-400'
-                : 'bg-emerald-500/10 text-emerald-400'
-            }`}
-          >
-            <Wallet className="h-4 w-4" />
+          <div className="flex items-center gap-1.5">
+            {!isEditingBalance && (
+              <button
+                type="button"
+                onClick={handleOpenEditBalance}
+                className="h-7 px-2 rounded-lg text-[10px] font-semibold bg-white/[0.04] hover:bg-emerald-500/15 text-slate-300 hover:text-emerald-300 border border-white/[0.08] hover:border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer"
+                title="Ajustar saldo real em conta"
+              >
+                <Edit2 className="h-2.5 w-2.5 text-emerald-400" />
+                <span>Ajustar</span>
+              </button>
+            )}
+            <div
+              className={`p-2 rounded-xl ${
+                isLowBalance
+                  ? 'bg-rose-500/20 text-rose-400'
+                  : 'bg-emerald-500/10 text-emerald-400'
+              }`}
+            >
+              <Wallet className="h-4 w-4" />
+            </div>
           </div>
         </CardHeader>
 
         <CardContent className="p-4 pt-1 space-y-2">
-          <div className="flex items-baseline gap-2">
-            <span
-              className={`text-2xl lg:text-3xl font-extrabold tracking-tight ${
-                isLowBalance ? 'text-rose-400' : 'text-white'
-              }`}
-            >
-              {formatCurrency(checkingBalance)}
-            </span>
-          </div>
+          {isEditingBalance ? (
+            <form onSubmit={handleSaveBalance} className="space-y-2 pt-1 animate-in fade-in">
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-400">
+                  R$
+                </span>
+                <input
+                  type="text"
+                  autoFocus
+                  value={balanceInput}
+                  onChange={(e) => setBalanceInput(e.target.value)}
+                  placeholder="0,00"
+                  className="w-full h-9 bg-[#111726] border border-emerald-500/40 rounded-lg pl-8 pr-2 text-sm font-mono font-bold text-white focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="submit"
+                  disabled={savingBalance}
+                  className="flex-1 h-7 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Check className="h-3 w-3" />
+                  {savingBalance ? 'Salvando...' : 'Salvar Saldo'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingBalance(false)}
+                  className="h-7 px-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 text-[11px] flex items-center justify-center cursor-pointer"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <span
+                className={`text-2xl lg:text-3xl font-extrabold tracking-tight ${
+                  isLowBalance ? 'text-rose-400' : 'text-white'
+                }`}
+              >
+                {formatCurrency(checkingBalance)}
+              </span>
+            </div>
+          )}
 
           <p className="text-[11px] text-slate-400 flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>

@@ -150,22 +150,37 @@ export function projectInstallmentCycles(
 ): ProjectedInstallment[] {
   const result: ProjectedInstallment[] = []
 
-  const baseDateObj = new Date(baseDate)
+  const [yStr, mStr, dStr] = (baseDate || new Date().toISOString().split('T')[0]).split('-')
+  const originalYear = parseInt(yStr, 10) || new Date().getFullYear()
+  const originalMonth = parseInt(mStr, 10) || new Date().getMonth() + 1
+  const originalDay = parseInt(dStr, 10) || new Date().getDate()
 
   for (let inst = startInstallment; inst <= totalInstallments; inst++) {
     const monthOffset = inst - startInstallment
     const cycle = addMonthsToCycle(baseCycleId, monthOffset)
 
-    // Data aproximada de vencimento / lançamento da parcela futura
-    const projDate = new Date(baseDateObj)
-    projDate.setMonth(projDate.getMonth() + monthOffset)
+    let targetMonth = originalMonth + monthOffset
+    let targetYear = originalYear
+    while (targetMonth > 12) {
+      targetMonth -= 12
+      targetYear += 1
+    }
+    while (targetMonth < 1) {
+      targetMonth += 12
+      targetYear -= 1
+    }
+
+    // Limitar dia ao máximo do mês (evitar bug de ano bissexto / mês de 28/30 dias)
+    const maxDays = new Date(targetYear, targetMonth, 0).getDate()
+    const safeDay = Math.min(originalDay, maxDays)
+    const projectedDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`
 
     result.push({
       installmentCurrent: inst,
       installmentTotal: totalInstallments,
       cycleId: cycle.cycleId,
       cycleLabel: cycle.label,
-      projectedDate: projDate.toISOString().split('T')[0],
+      projectedDate,
     })
   }
 

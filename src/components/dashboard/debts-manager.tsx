@@ -245,7 +245,7 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
               </div>
               <p className="text-sm font-semibold text-white">Você não possui dívidas ativas!</p>
               <p className="text-xs text-slate-400">
-                Se precisar registrar algum valor a pagar, use o botão "+ Nova Dívida".
+                Se precisar registrar algum valor a pagar, use o botão &quot;+ Nova Dívida&quot;.
               </p>
             </div>
           ) : (

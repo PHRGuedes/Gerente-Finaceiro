@@ -62,6 +62,7 @@ O componente **Lançamento Rápido** fica fixado no topo do Dashboard e oferece 
    - Filtros por **Pessoa**, **Status** (Pendentes / Recebidas) e **Ciclo** (Fatura Atual vs Faturas Futuras).
    - **Botão "Marcar como Recebido (Pix)":** Ao dar baixa em uma notinha, o sistema atualiza o status para `paid` e **soma o valor diretamente ao Saldo Principal (Conta Corrente / Pix)**, registrando o comprovante da entrada.
    - **Modal "+ Nova Notinha":** Cadastro expresso de recebíveis parcelados com sugestões rápidas de contatos.
+   - **Notinhas Divididas (Gasto Próprio + Terceiro na mesma compra):** Suporte nativo para compras compartilhadas (ex: Restaurante de R$ 150,00 onde R$ 70,00 é notinha da Luiza e R$ 80,00 é meu gasto próprio). O sistema registra a compra total na fatura do cartão, calcula o gasto próprio automaticamente, cria o recebível apenas com o valor devido pelo terceiro e disponibiliza botão de atalho `"50% cada"`.
 
 ---
 
@@ -180,6 +181,29 @@ Gerente-Finaceiro/
 - Filtros por tipo de jogo (**Torneio** ou **Cash Game**) e período de datas.
 - Resumo automático de **Total de Buy-ins**, **Total de Cashouts**, **Lucro Líquido (ROI)** e status Positivo/Negativo.
 - Formulários para registro de sessão completa ou entrada/saída avulsa.
+- **Curva Visual de Evolução do Bankroll:** Gráfico em SVG leve mostrando a progressão acumulada do lucro/prejuízo ao longo das sessões, linha de *break-even* (`R$ 0,00`) e pico histórico.
+- **Edição de Lançamentos:** Botão `✏️ Editar` em cada registro para corrigir valores, modalidade, data ou notas.
+
+---
+
+## 📱 Etapa 8 - Experiência Mobile PWA, Super Notinhas & Controle Total
+
+1. **Controle Total na Visão Geral (P0 - C):**
+   - **Ajuste Direto do Saldo em Conta:** Botão `✏️ Ajustar` direto no card **"Saldo em Conta"** para definir ou corrigir o saldo bancário real instantaneamente.
+   - **Navegação entre Ciclos / Meses (`◀ Fatura 04/XX ▶`):** Seletor interativo no topo (desktop) e no banner (celular) que permite navegar por faturas passadas e faturas futuras (com todas as parcelas projetadas), atualizando KPIs, extrato e gráficos em tempo real, além do botão rápido `"Atual"` para retornar ao mês vigente.
+   - **Edição Completa de Lançamentos (`✏️ Editar`):** Edite qualquer despesa ou receita existente; o sistema recalcula automaticamente o saldo em conta (se Pix/Dinheiro) e sincroniza o valor da notinha vinculada.
+
+2. **Super Notinhas — Automação de Cobrança (P0 - C):**
+   - **Baixa em Lote por Pessoa (`Receber Tudo (Pix)`):** Quita todas as notinhas pendentes de uma pessoa no ciclo selecionado em 1 clique e credita a soma diretamente no Saldo Principal.
+   - **Cobrança Formatada para WhatsApp (`Copiar Cobrança` / `WhatsApp`):** Gera automaticamente a lista detalhada de compras, parcelas e valor total devido pela pessoa, pronta para colar ou abrir direto no WhatsApp.
+
+3. **Experiência Mobile App de Banco & PWA Instalável (P1 - A):**
+   - **Bottom Navigation Bar Fixa no Celular:** Barra inferior fixa estilo aplicativo bancário (`Início`, `Notinhas` com contador, `Previsão`, `Dívidas` e `Poker`) para navegação ergonômica com o polegar.
+   - **PWA (Progressive Web App):** Manifesto nativo (`/manifest.webmanifest`), ícone vetorial (`/icon.svg`) e meta tags para instalar na tela inicial do iPhone/Android em tela cheia (`standalone`).
+
+4. **Resumos Visuais Compactos (P2 - B):**
+   - **Gastos por Categoria com Alternância (`Meu Gasto Próprio` vs `Geral c/ Notinhas`):** Mostra a porcentagem exata do que você realmente gastou por categoria (descontando a parte de terceiros nas compras divididas).
+   - **Curva de Evolução do Bankroll no Poker:** Gráfico de linha e área com pico e resultado acumulado.
 
 ---
 

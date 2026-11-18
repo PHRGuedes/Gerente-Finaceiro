@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="#07090e"/>
+  <rect x="40" y="40" width="432" height="432" rx="88" fill="url(#emeraldGrad)"/>
+  <path d="M352 176H160C142.327 176 128 190.327 128 208V320C128 337.673 142.327 352 160 352H352C369.673 352 384 337.673 384 320V208C384 190.327 369.673 176 352 176Z" stroke="#07090e" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M128 224H384" stroke="#07090e" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="328" cy="288" r="18" fill="#07090e"/>
+  <defs>
+    <linearGradient id="emeraldGrad" x1="40" y1="472" x2="472" y2="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10b981"/>
+      <stop offset="0.5" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   category TEXT NOT NULL,
   is_third_party BOOLEAN NOT NULL DEFAULT FALSE,
   debtor_name TEXT DEFAULT NULL,
+  third_party_amount NUMERIC(12, 2) DEFAULT NULL, -- Quando apenas uma parte do valor é notinha (dividido)
   installment_current INTEGER NOT NULL DEFAULT 1 CHECK (installment_current >= 1),
   installment_total INTEGER NOT NULL DEFAULT 1 CHECK (installment_total >= 1),
   billing_cycle TEXT, -- Formato 'YYYY-MM' (ex: '2026-11')

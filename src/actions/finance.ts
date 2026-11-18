@@ -72,14 +72,23 @@ export async function createTransactionAction(formData: {
   category: string
   is_third_party?: boolean
   debtor_name?: string | null
+  third_party_amount?: number | null
   installment_current?: number
   installment_total?: number
+  billing_cycle?: string | null
 }) {
   const supabase = await createClient()
   const user = await getAuthenticatedUser(supabase)
 
   const is_third_party = Boolean(formData.is_third_party)
   const debtor_name = is_third_party && formData.debtor_name ? formData.debtor_name.trim() : null
+  const third_party_amount =
+    is_third_party && formData.third_party_amount && formData.third_party_amount > 0
+      ? Number(formData.third_party_amount)
+      : is_third_party
+      ? formData.amount
+      : null
+
   const installment_current =
     formData.installment_current && formData.installment_current >= 1
       ? formData.installment_current
@@ -88,7 +97,7 @@ export async function createTransactionAction(formData: {
     formData.installment_total && formData.installment_total >= 1
       ? formData.installment_total
       : 1
-  const base_cycle = getCycleForDate(formData.date)
+  const base_cycle = formData.billing_cycle || getCycleForDate(formData.date)
 
   // 1. Projeção das parcelas (da parcela atual até a última)
   const projections = projectInstallmentCycles(
@@ -122,6 +131,7 @@ export async function createTransactionAction(formData: {
         category: formData.category,
         is_third_party,
         debtor_name,
+        third_party_amount,
         installment_current: proj.installmentCurrent,
         installment_total: proj.installmentTotal,
         billing_cycle: proj.cycleId,
@@ -146,7 +156,7 @@ export async function createTransactionAction(formData: {
         user_id: user.id,
         debtor_name,
         description: descWithInstallment,
-        amount: formData.amount,
+        amount: third_party_amount || formData.amount,
         installment_current: proj.installmentCurrent,
         installment_total: proj.installmentTotal,
         status: 'pending',
@@ -609,6 +619,7 @@ export async function batchCreateTransactionsAction(
     category: string
     is_third_party: boolean
     debtor_name?: string | null
+    third_party_amount?: number | null
     billing_cycle?: string
   }[]
 ) {
@@ -617,6 +628,12 @@ export async function batchCreateTransactionsAction(
 
   for (const item of items) {
     const cycle = item.billing_cycle || getCycleForDate(item.date)
+    const thirdPartyAmount =
+      item.is_third_party && item.third_party_amount && item.third_party_amount > 0
+        ? Number(item.third_party_amount)
+        : item.is_third_party
+        ? item.amount
+        : null
 
     const { data: tx, error } = await supabase
       .from('transactions')
@@ -630,6 +647,7 @@ export async function batchCreateTransactionsAction(
         category: item.category,
         is_third_party: item.is_third_party,
         debtor_name: item.is_third_party && item.debtor_name ? item.debtor_name.trim() : null,
+        third_party_amount: thirdPartyAmount,
         billing_cycle: cycle,
         installment_current: 1,
         installment_total: 1,
@@ -647,7 +665,7 @@ export async function batchCreateTransactionsAction(
         user_id: user.id,
         debtor_name: item.debtor_name.trim(),
         description: item.description.trim(),
-        amount: item.amount,
+        amount: thirdPartyAmount || item.amount,
         installment_current: 1,
         installment_total: 1,
         status: 'pending',
@@ -784,4 +802,275 @@ export async function deletePokerEntryAction(id: string) {
 
   revalidatePath('/')
   return { success: true }
+}
+
+/**
+ * Atualiza um lançamento existente do tracker de poker.
+ */
+export async function updatePokerEntryAction(
+  id: string,
+  params: {
+    date: string
+    description: string
+    game_type: 'tournament' | 'cash'
+    entry_type: 'buy_in' | 'cash_out'
+    amount: number
+    location?: string | null
+    notes?: string | null
+  }
+) {
+  const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
+
+  const { error } = await supabase
+    .from('poker_entries')
+    .update({
+      date: params.date,
+      description: params.description.trim(),
+      game_type: params.game_type,
+      entry_type: params.entry_type,
+      amount: params.amount,
+      location: params.location ? params.location.trim() : null,
+      notes: params.notes ? params.notes.trim() : null,
+    })
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Erro ao atualizar lançamento de poker:', error)
+    throw new Error(`Erro ao atualizar: ${error.message}`)
+  }
+
+  revalidatePath('/')
+  return { success: true }
+}
+
+/**
+ * Define / ajusta diretamente o Saldo Principal da Conta Corrente (Pix) do usuário.
+ */
+export async function setCheckingBalanceAction(newBalance: number) {
+  const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
+
+  const { data: balanceData } = await supabase
+    .from('account_balances')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('account_type', 'checking')
+    .limit(1)
+    .maybeSingle()
+
+  if (balanceData) {
+    const { error } = await supabase
+      .from('account_balances')
+      .update({ current_balance: newBalance })
+      .eq('id', balanceData.id)
+      .eq('user_id', user.id)
+
+    if (error) throw new Error(`Erro ao ajustar saldo: ${error.message}`)
+  } else {
+    const { error } = await supabase.from('account_balances').insert({
+      user_id: user.id,
+      account_name: 'Conta Corrente / Pix',
+      account_type: 'checking',
+      initial_balance: newBalance,
+      current_balance: newBalance,
+    })
+
+    if (error) throw new Error(`Erro ao criar saldo: ${error.message}`)
+  }
+
+  revalidatePath('/')
+  return { success: true, newBalance }
+}
+
+/**
+ * Atualiza uma transação existente, ajustando o saldo (se Pix/Dinheiro) e sincronizando a notinha vinculada.
+ */
+export async function updateTransactionAction(
+  txId: string,
+  formData: {
+    type: TransactionType
+    description: string
+    amount: number
+    date: string
+    payment_method: PaymentMethod
+    category: string
+    is_third_party?: boolean
+    debtor_name?: string | null
+    third_party_amount?: number | null
+  }
+) {
+  const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
+
+  const { data: oldTx } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('id', txId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!oldTx) {
+    throw new Error('Transação não encontrada.')
+  }
+
+  // 1. Estornar efeito anterior no saldo se era Pix ou Dinheiro
+  if (oldTx.payment_method === 'pix' || oldTx.payment_method === 'cash') {
+    const oldAccType = oldTx.payment_method === 'pix' ? 'checking' : 'cash'
+    const revertDelta = oldTx.type === 'expense' ? Number(oldTx.amount) : -Number(oldTx.amount)
+    await adjustAccountBalance(supabase, user.id, oldAccType, revertDelta)
+  }
+
+  const is_third_party = Boolean(formData.is_third_party)
+  const debtor_name = is_third_party && formData.debtor_name ? formData.debtor_name.trim() : null
+  const third_party_amount =
+    is_third_party && formData.third_party_amount && formData.third_party_amount > 0
+      ? Number(formData.third_party_amount)
+      : is_third_party
+      ? formData.amount
+      : null
+
+  // Se for parcela única (1/1), atualiza o ciclo conforme a nova data; se for parcelado, preserva o deslocamento ou recalcula se data mudou
+  const newCycle =
+    oldTx.installment_total === 1
+      ? getCycleForDate(formData.date)
+      : oldTx.billing_cycle || getCycleForDate(formData.date)
+
+  const { error: updateErr } = await supabase
+    .from('transactions')
+    .update({
+      type: formData.type,
+      description: formData.description.trim(),
+      amount: formData.amount,
+      date: formData.date,
+      payment_method: formData.payment_method,
+      category: formData.category,
+      is_third_party,
+      debtor_name,
+      third_party_amount,
+      billing_cycle: newCycle,
+    })
+    .eq('id', txId)
+    .eq('user_id', user.id)
+
+  if (updateErr) {
+    throw new Error(`Erro ao atualizar lançamento: ${updateErr.message}`)
+  }
+
+  // 2. Aplicar novo efeito no saldo se o método atual for Pix ou Dinheiro
+  if (formData.payment_method === 'pix' || formData.payment_method === 'cash') {
+    const newAccType = formData.payment_method === 'pix' ? 'checking' : 'cash'
+    const newDelta = formData.type === 'income' ? formData.amount : -formData.amount
+    await adjustAccountBalance(supabase, user.id, newAccType, newDelta)
+  }
+
+  // 3. Sincronizar Notinha (receivables) vinculada
+  const { data: existingRec } = await supabase
+    .from('receivables')
+    .select('id, status')
+    .eq('transaction_id', txId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (is_third_party && debtor_name) {
+    if (existingRec) {
+      await supabase
+        .from('receivables')
+        .update({
+          debtor_name,
+          description: formData.description.trim(),
+          amount: third_party_amount || formData.amount,
+          billing_cycle: newCycle,
+        })
+        .eq('id', existingRec.id)
+        .eq('user_id', user.id)
+    } else {
+      await supabase.from('receivables').insert({
+        user_id: user.id,
+        debtor_name,
+        description: formData.description.trim(),
+        amount: third_party_amount || formData.amount,
+        installment_current: oldTx.installment_current,
+        installment_total: oldTx.installment_total,
+        status: 'pending',
+        billing_cycle: newCycle,
+        transaction_id: txId,
+      })
+    }
+  } else if (existingRec && existingRec.status === 'pending') {
+    await supabase
+      .from('receivables')
+      .delete()
+      .eq('id', existingRec.id)
+      .eq('user_id', user.id)
+  }
+
+  revalidatePath('/')
+  return { success: true }
+}
+
+/**
+ * Baixa em Lote: Marca várias notinhas pendentes de uma pessoa como Recebidas (Pix) de uma só vez.
+ */
+export async function markPersonReceivablesPaidAction(params: {
+  debtorName: string
+  receivableIds: string[]
+  creditToBalance?: boolean
+}) {
+  const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
+  const today = new Date().toISOString().split('T')[0]
+
+  if (!params.receivableIds || params.receivableIds.length === 0) {
+    throw new Error('Nenhuma notinha selecionada para baixa.')
+  }
+
+  const { data: pendingRecs, error: fetchErr } = await supabase
+    .from('receivables')
+    .select('*')
+    .in('id', params.receivableIds)
+    .eq('user_id', user.id)
+    .eq('status', 'pending')
+
+  if (fetchErr) {
+    throw new Error(`Erro ao buscar notinhas: ${fetchErr.message}`)
+  }
+
+  if (!pendingRecs || pendingRecs.length === 0) {
+    return { success: true, totalReceived: 0, count: 0 }
+  }
+
+  const totalReceived = pendingRecs.reduce((acc, curr) => acc + Number(curr.amount), 0)
+  const idsToUpdate = pendingRecs.map((r) => r.id)
+
+  const { error: updateErr } = await supabase
+    .from('receivables')
+    .update({ status: 'paid' })
+    .in('id', idsToUpdate)
+    .eq('user_id', user.id)
+
+  if (updateErr) {
+    throw new Error(`Erro ao baixar notinhas em lote: ${updateErr.message}`)
+  }
+
+  if (params.creditToBalance !== false && totalReceived > 0) {
+    await supabase.from('transactions').insert({
+      user_id: user.id,
+      type: 'income',
+      description: `Recebimento Notinhas Pix - ${params.debtorName} (${pendingRecs.length} ${
+        pendingRecs.length === 1 ? 'item' : 'itens'
+      })`,
+      amount: totalReceived,
+      date: today,
+      payment_method: 'pix',
+      category: 'Notinha / Terceiros',
+      is_third_party: false,
+    })
+
+    await adjustAccountBalance(supabase, user.id, 'checking', totalReceived)
+  }
+
+  revalidatePath('/')
+  return { success: true, totalReceived, count: pendingRecs.length }
 }

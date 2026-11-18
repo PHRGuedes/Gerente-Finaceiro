@@ -22,6 +22,7 @@ import {
   X,
   ArrowUpRight,
   ArrowDownLeft,
+  Edit2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +32,7 @@ import { PokerEntry, PokerGameType, PokerEntryType } from '@/types/finance'
 import {
   createPokerEntryAction,
   createPokerTrackerSessionAction,
+  updatePokerEntryAction,
   deletePokerEntryAction,
 } from '@/actions/finance'
 
@@ -51,9 +53,10 @@ export function PokerSection({ entries }: PokerSectionProps) {
   const [entryTypeFilter, setEntryTypeFilter] = useState<EntryTypeFilter>('all')
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Modal de Criação
+  // Modal de Criação / Edição
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'session' | 'single'>('session')
+  const [editingEntry, setEditingEntry] = useState<PokerEntry | null>(null)
 
   // Form: Sessão Completa (Buy-in + Cashout)
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0])
@@ -205,6 +208,66 @@ export function PokerSection({ entries }: PokerSectionProps) {
     }
   }, [entries])
 
+  // 4. Curva Cronológica de Evolução do Bankroll (Lucro Acumulado por Data)
+  const bankrollCurve = useMemo(() => {
+    if (filteredEntries.length === 0) return []
+
+    // Ordenar da data mais antiga para a mais recente
+    const chronological = [...filteredEntries].sort((a, b) =>
+      a.date === b.date
+        ? (a.created_at || '').localeCompare(b.created_at || '')
+        : a.date.localeCompare(b.date)
+    )
+
+    // Agrupar saldo líquido por data para uma curva limpa
+    const dailyMap = new Map<string, number>()
+    chronological.forEach((e) => {
+      const delta = e.entry_type === 'cash_out' ? Number(e.amount) : -Number(e.amount)
+      dailyMap.set(e.date, (dailyMap.get(e.date) || 0) + delta)
+    })
+
+    let runningNet = 0
+    const points: Array<{ date: string; dailyNet: number; cumulativeNet: number }> = [
+      { date: 'Início', dailyNet: 0, cumulativeNet: 0 },
+    ]
+
+    Array.from(dailyMap.entries()).forEach(([date, dailyNet]) => {
+      runningNet += dailyNet
+      points.push({
+        date,
+        dailyNet,
+        cumulativeNet: runningNet,
+      })
+    })
+
+    return points
+  }, [filteredEntries])
+
+  const handleOpenEdit = (entry: PokerEntry) => {
+    setEditingEntry(entry)
+    setModalMode('single')
+    setSingleDate(entry.date)
+    setSingleDesc(entry.description)
+    setSingleGameType(entry.game_type)
+    setSingleEntryType(entry.entry_type)
+    setSingleAmount(String(entry.amount).replace('.', ','))
+    setSingleLocation(entry.location || '')
+    setSingleNotes(entry.notes || '')
+    setErrorMsg(null)
+    setIsModalOpen(true)
+  }
+
+  const handleOpenNewModal = () => {
+    setEditingEntry(null)
+    setModalMode('session')
+    setSingleDesc('')
+    setSingleAmount('')
+    setSingleLocation('')
+    setSingleNotes('')
+    setErrorMsg(null)
+    setIsModalOpen(true)
+  }
+
   // Handlers de Submit
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -268,18 +331,32 @@ export function PokerSection({ entries }: PokerSectionProps) {
 
     setIsSubmitting(true)
     try {
-      await createPokerEntryAction({
-        date: singleDate,
-        description: singleDesc,
-        game_type: singleGameType,
-        entry_type: singleEntryType,
-        amount: amountNum,
-        location: singleLocation,
-        notes: singleNotes,
-      })
+      if (editingEntry) {
+        await updatePokerEntryAction(editingEntry.id, {
+          date: singleDate,
+          description: singleDesc,
+          game_type: singleGameType,
+          entry_type: singleEntryType,
+          amount: amountNum,
+          location: singleLocation,
+          notes: singleNotes,
+        })
+        setSuccessMsg('Lançamento atualizado com sucesso!')
+      } else {
+        await createPokerEntryAction({
+          date: singleDate,
+          description: singleDesc,
+          game_type: singleGameType,
+          entry_type: singleEntryType,
+          amount: amountNum,
+          location: singleLocation,
+          notes: singleNotes,
+        })
+        setSuccessMsg('Lançamento registrado com sucesso!')
+      }
 
-      setSuccessMsg('Lançamento registrado com sucesso!')
       setIsModalOpen(false)
+      setEditingEntry(null)
       // Reset form
       setSingleDesc('')
       setSingleAmount('')
@@ -483,6 +560,143 @@ export function PokerSection({ entries }: PokerSectionProps) {
         </Card>
       </div>
 
+      {/* CURVA VISUAL DE EVOLUÇÃO DO BANKROLL (RESUMO COMPACTO) */}
+      {bankrollCurve.length > 1 && (
+        <Card className="border-white/[0.08] bg-[#0c101a]/70 backdrop-blur-xl">
+          <CardHeader className="p-4 sm:p-5 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2 text-white">
+                <TrendingUp className="h-4 w-4 text-emerald-400" />
+                Curva de Evolução do Bankroll
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-400">
+                Progressão acumulada de lucro/prejuízo ao longo das datas filtradas
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-mono">
+              <span className="text-slate-400">
+                Pico:{' '}
+                <strong className="text-emerald-400">
+                  {formatCurrency(Math.max(...bankrollCurve.map((p) => p.cumulativeNet)))}
+                </strong>
+              </span>
+              <span className="text-slate-600">•</span>
+              <span className="text-slate-400">
+                Atual:{' '}
+                <strong className={stats.isPositive ? 'text-emerald-400' : 'text-rose-400'}>
+                  {stats.isPositive ? '+' : ''}
+                  {formatCurrency(stats.netProfit)}
+                </strong>
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-5 pt-1">
+            {(() => {
+              const values = bankrollCurve.map((p) => p.cumulativeNet)
+              const minVal = Math.min(0, ...values)
+              const maxVal = Math.max(0, ...values)
+              const range = maxVal - minVal || 100
+              const width = 640
+              const height = 135
+              const padX = 16
+              const padY = 18
+              const innerW = width - padX * 2
+              const innerH = height - padY * 2
+
+              const getX = (idx: number) =>
+                padX + (idx / Math.max(1, bankrollCurve.length - 1)) * innerW
+              const getY = (val: number) =>
+                padY + innerH - ((val - minVal) / range) * innerH
+
+              const zeroY = getY(0)
+              const pointsStr = bankrollCurve
+                .map((p, idx) => `${getX(idx).toFixed(1)},${getY(p.cumulativeNet).toFixed(1)}`)
+                .join(' ')
+
+              const areaPointsStr = `${getX(0).toFixed(1)},${zeroY.toFixed(1)} ${pointsStr} ${getX(
+                bankrollCurve.length - 1
+              ).toFixed(1)},${zeroY.toFixed(1)}`
+
+              const strokeColor = stats.isPositive ? '#10b981' : '#f43f5e'
+
+              return (
+                <div className="space-y-2">
+                  <div className="w-full overflow-hidden rounded-xl bg-[#090d16] border border-white/[0.05] p-2">
+                    <svg
+                      viewBox={`0 0 ${width} ${height}`}
+                      className="w-full h-32 sm:h-36 overflow-visible"
+                      preserveAspectRatio="none"
+                    >
+                      <defs>
+                        <linearGradient id="pokerCurveGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={strokeColor} stopOpacity="0.28" />
+                          <stop offset="100%" stopColor={strokeColor} stopOpacity="0.02" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Linha de Zero (Break-even) */}
+                      <line
+                        x1={padX}
+                        y1={zeroY}
+                        x2={width - padX}
+                        y2={zeroY}
+                        stroke="rgba(255,255,255,0.14)"
+                        strokeDasharray="4 4"
+                        strokeWidth="1"
+                      />
+
+                      {/* Área Preenchida */}
+                      <polygon points={areaPointsStr} fill="url(#pokerCurveGrad)" />
+
+                      {/* Linha de Evolução */}
+                      <polyline
+                        fill="none"
+                        stroke={strokeColor}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={pointsStr}
+                      />
+
+                      {/* Pontos da Curva */}
+                      {bankrollCurve.map((p, idx) => (
+                        <circle
+                          key={idx}
+                          cx={getX(idx)}
+                          cy={getY(p.cumulativeNet)}
+                          r={idx === bankrollCurve.length - 1 ? 4.5 : 3}
+                          fill={p.cumulativeNet >= 0 ? '#10b981' : '#f43f5e'}
+                          stroke="#090d16"
+                          strokeWidth="1.5"
+                        >
+                          <title>
+                            {p.date === 'Início' ? 'Início' : formatDate(p.date)}: Acumulado{' '}
+                            {formatCurrency(p.cumulativeNet)}
+                          </title>
+                        </circle>
+                      ))}
+                    </svg>
+                  </div>
+
+                  {/* Legenda de Datas Extremos */}
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+                    <span>
+                      Início:{' '}
+                      {bankrollCurve[1] ? formatDate(bankrollCurve[1].date) : '—'}
+                    </span>
+                    <span className="text-slate-500">Linha tracejada = R$ 0,00</span>
+                    <span>
+                      Último:{' '}
+                      {formatDate(bankrollCurve[bankrollCurve.length - 1].date)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
+          </CardContent>
+        </Card>
+      )}
+
       {/* SEÇÃO PRINCIPAL: FILTROS + LISTAGEM */}
       <Card className="border-white/[0.08] bg-[#0c101a]/70 backdrop-blur-xl">
         <CardHeader className="p-5 pb-3">
@@ -499,8 +713,8 @@ export function PokerSection({ entries }: PokerSectionProps) {
 
             <Button
               size="sm"
-              onClick={() => setIsModalOpen(true)}
-              className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 self-start sm:self-auto h-8 px-3.5"
+              onClick={handleOpenNewModal}
+              className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 self-start sm:self-auto h-9 px-3.5"
             >
               <PlusCircle className="h-4 w-4 text-black" />
               <span>Nova Sessão / Lançamento</span>
@@ -671,7 +885,7 @@ export function PokerSection({ entries }: PokerSectionProps) {
               </div>
               <p className="text-sm font-semibold text-white">Nenhum lançamento de poker encontrado</p>
               <p className="text-xs text-slate-500">
-                Altere os filtros acima ou cadastre uma nova jogatina no botão "+ Nova Sessão".
+                Altere os filtros acima ou cadastre uma nova jogatina no botão &quot;+ Nova Sessão&quot;.
               </p>
             </div>
           ) : (
@@ -774,16 +988,28 @@ export function PokerSection({ entries }: PokerSectionProps) {
                         </span>
                       </div>
 
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDelete(entry.id, entry.description)}
-                        disabled={deletingId === entry.id}
-                        className="h-8 w-8 p-0 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
-                        title="Excluir lançamento"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleOpenEdit(entry)}
+                          className="h-8 w-8 p-0 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10"
+                          title="Editar lançamento"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDelete(entry.id, entry.description)}
+                          disabled={deletingId === entry.id}
+                          className="h-8 w-8 p-0 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                          title="Excluir lançamento"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )
@@ -793,7 +1019,7 @@ export function PokerSection({ entries }: PokerSectionProps) {
         </CardContent>
       </Card>
 
-      {/* MODAL: NOVO LANÇAMENTO DE POKER */}
+      {/* MODAL: NOVO / EDITAR LANÇAMENTO DE POKER */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
           <div className="relative w-full max-w-md bg-[#0c101a] border border-emerald-500/30 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -801,11 +1027,11 @@ export function PokerSection({ entries }: PokerSectionProps) {
             <div className="p-5 border-b border-white/[0.08] flex items-center justify-between bg-[#111726]/80">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <Spade className="h-5 w-5" />
+                  {editingEntry ? <Edit2 className="h-5 w-5" /> : <Spade className="h-5 w-5" />}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">
-                    Novo Lançamento de Poker
+                    {editingEntry ? 'Editar Lançamento de Poker' : 'Novo Lançamento de Poker'}
                   </h3>
                   <p className="text-xs text-slate-400">
                     Bankroll independente (não altera saldo em conta)
@@ -813,7 +1039,10 @@ export function PokerSection({ entries }: PokerSectionProps) {
                 </div>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false)
+                  setEditingEntry(null)
+                }}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white"
               >
                 <X className="h-5 w-5" />
@@ -821,6 +1050,7 @@ export function PokerSection({ entries }: PokerSectionProps) {
             </div>
 
             {/* Abas do Modal: Sessão Completa vs Lançamento Avulso */}
+            {!editingEntry && (
             <div className="p-3 bg-[#111726]/50 border-b border-white/[0.06] flex items-center gap-1.5">
               <button
                 type="button"
@@ -845,6 +1075,7 @@ export function PokerSection({ entries }: PokerSectionProps) {
                 Movimentação Avulsa
               </button>
             </div>
+            )}
 
             {/* Mensagem de Erro */}
             {errorMsg && (

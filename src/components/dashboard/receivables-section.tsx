@@ -15,13 +15,20 @@ import {
   Sparkles,
   ArrowRight,
   TrendingUp,
+  Copy,
+  MessageCircle,
+  CheckCheck,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import { Receivable } from '@/types/finance'
-import { markReceivablePaidAction, deleteReceivableAction } from '@/actions/finance'
+import {
+  markReceivablePaidAction,
+  markPersonReceivablesPaidAction,
+  deleteReceivableAction,
+} from '@/actions/finance'
 import { NewReceivableModal } from '@/components/dashboard/new-receivable-modal'
 
 interface ReceivablesSectionProps {
@@ -41,6 +48,7 @@ export function ReceivablesSection({
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [batchLoadingDebtor, setBatchLoadingDebtor] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
 
   // Extrair lista de pessoas únicas
@@ -105,6 +113,87 @@ export function ReceivablesSection({
       return true
     })
   }, [receivables, selectedDebtor, statusFilter, cycleFilter, searchTerm, currentCycleId])
+
+  // Agrupamento de pendentes por pessoa no filtro atual (para Baixa em Lote e Cobrança WhatsApp)
+  const pendingByDebtor = useMemo(() => {
+    const map = new Map<string, { debtorName: string; items: Receivable[]; total: number }>()
+    filteredReceivables
+      .filter((r) => r.status === 'pending')
+      .forEach((r) => {
+        const entry = map.get(r.debtor_name) || {
+          debtorName: r.debtor_name,
+          items: [],
+          total: 0,
+        }
+        entry.items.push(r)
+        entry.total += Number(r.amount)
+        map.set(r.debtor_name, entry)
+      })
+    return Array.from(map.values()).sort((a, b) => b.total - a.total)
+  }, [filteredReceivables])
+
+  const buildWhatsAppMessage = (debtorName: string, items: Receivable[], total: number) => {
+    const cycleTitle =
+      cycleFilter === 'current'
+        ? currentCycleLabel.split('(')[0].trim()
+        : 'Geral (Todas as Faturas)'
+    const lines = items.map((item) => {
+      const inst =
+        item.installment_total > 1
+          ? ` [Parcela ${item.installment_current}/${item.installment_total}]`
+          : ''
+      return `• ${item.description}${inst}: ${formatCurrency(Number(item.amount))}`
+    })
+    return `Oi ${debtorName}! Tudo bem? Segue o resumo das notinhas (${cycleTitle}):\n\n${lines.join(
+      '\n'
+    )}\n\n💰 *Total: ${formatCurrency(total)}*`
+  }
+
+  const handleCopyWhatsApp = async (debtorName: string, items: Receivable[], total: number) => {
+    const msg = buildWhatsAppMessage(debtorName, items, total)
+    try {
+      await navigator.clipboard.writeText(msg)
+      setFeedback(`Resumo de cobrança de ${debtorName} (${formatCurrency(total)}) copiado! Só colar no WhatsApp.`)
+      setTimeout(() => setFeedback(null), 5000)
+    } catch {
+      alert(msg)
+    }
+  }
+
+  const handleOpenWhatsApp = (debtorName: string, items: Receivable[], total: number) => {
+    const msg = buildWhatsAppMessage(debtorName, items, total)
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleBatchSettlePerson = async (debtorName: string, items: Receivable[], total: number) => {
+    if (
+      !confirm(
+        `Confirmar recebimento em lote de ${items.length} ${
+          items.length === 1 ? 'notinha' : 'notinhas'
+        } de ${debtorName} no valor total de ${formatCurrency(total)} via Pix?`
+      )
+    ) {
+      return
+    }
+    setBatchLoadingDebtor(debtorName)
+    setFeedback(null)
+    try {
+      await markPersonReceivablesPaidAction({
+        debtorName,
+        receivableIds: items.map((i) => i.id),
+        creditToBalance: true,
+      })
+      setFeedback(
+        `Todas as ${items.length} notinhas de ${debtorName} (${formatCurrency(
+          total
+        )}) foram baixadas e somadas ao seu Saldo Principal (Pix)!`
+      )
+      setTimeout(() => setFeedback(null), 6000)
+    } finally {
+      setBatchLoadingDebtor(null)
+    }
+  }
 
   // Marcar como Recebido (Pix) - Regra 2
   const handleMarkAsPaid = async (rec: Receivable) => {
@@ -385,7 +474,94 @@ export function ReceivablesSection({
         </CardHeader>
 
         {/* Lista de Notinhas */}
-        <CardContent className="p-5 pt-2">
+        <CardContent className="p-5 pt-2 space-y-5">
+          {/* Painel de Cobrança Rápida WhatsApp e Baixa em Lote por Pessoa */}
+          {pendingByDebtor.length > 0 && (
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Ações Rápidas por Pessoa ({cycleFilter === 'current' ? 'Ciclo Vigente' : 'Todas as Faturas'})
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {pendingByDebtor.map((group) => (
+                  <div
+                    key={group.debtorName}
+                    className="p-3.5 rounded-2xl bg-[#121826]/90 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`h-10 w-10 rounded-xl bg-gradient-to-tr ${getAvatarColor(
+                          group.debtorName
+                        )} flex items-center justify-center text-white font-bold text-xs shadow-md shrink-0`}
+                      >
+                        {group.debtorName.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-white truncate">
+                            {group.debtorName}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0">
+                            {group.items.length} {group.items.length === 1 ? 'item' : 'itens'}
+                          </span>
+                        </div>
+                        <span className="text-sm font-extrabold font-mono text-amber-400 block">
+                          Total: {formatCurrency(group.total)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopyWhatsApp(group.debtorName, group.items, group.total)
+                        }
+                        className="h-8 px-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-slate-200 text-[11px] font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                        title="Copiar resumo formatado para colar no WhatsApp"
+                      >
+                        <Copy className="h-3.5 w-3.5 text-amber-400" />
+                        <span>Copiar Cobrança</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleOpenWhatsApp(group.debtorName, group.items, group.total)
+                        }
+                        className="h-8 px-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold inline-flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
+                        title="Abrir direto no WhatsApp"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>WhatsApp</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={batchLoadingDebtor === group.debtorName}
+                        onClick={() =>
+                          handleBatchSettlePerson(group.debtorName, group.items, group.total)
+                        }
+                        className="h-8 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-bold inline-flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all cursor-pointer whitespace-nowrap"
+                        title="Dar baixa em todas as notinhas desta pessoa de uma vez via Pix"
+                      >
+                        <CheckCheck className="h-3.5 w-3.5 text-black" />
+                        <span>
+                          {batchLoadingDebtor === group.debtorName
+                            ? 'Baixando...'
+                            : 'Receber Tudo (Pix)'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {filteredReceivables.length === 0 ? (
             <div className="py-12 text-center space-y-2">
               <div className="h-12 w-12 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mx-auto text-slate-500">
@@ -508,7 +684,7 @@ export function ReceivablesSection({
                       {/* Excluir notinha */}
                       <button
                         onClick={() => handleDelete(rec.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer"
+                        className="opacity-80 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer"
                         title="Remover notinha"
                       >
                         <Trash2 className="h-4 w-4" />

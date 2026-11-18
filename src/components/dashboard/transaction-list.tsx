@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react'
 import {
   Search,
   Filter,
+  Edit2,
   Trash2,
   Users,
   QrCode,
@@ -66,6 +67,7 @@ interface TransactionListProps {
   cycleLabel: string
   onOpenConciliateCsv?: () => void
   onOpenExportPdf?: () => void
+  onEditTransaction?: (tx: Transaction) => void
 }
 
 type FilterMethod = 'all' | 'pix_cash' | 'credit'
@@ -76,6 +78,7 @@ export function TransactionList({
   cycleLabel,
   onOpenConciliateCsv,
   onOpenExportPdf,
+  onEditTransaction,
 }: TransactionListProps) {
   const [filterMethod, setFilterMethod] = useState<FilterMethod>('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -263,9 +266,25 @@ export function TransactionList({
                         </span>
 
                         {tx.is_third_party && (
-                          <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-md font-medium shrink-0">
-                            <Users className="h-2.5 w-2.5" />
-                            {tx.debtor_name || 'Notinha'}
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-md font-medium shrink-0"
+                            title={
+                              tx.third_party_amount && Number(tx.third_party_amount) < Number(tx.amount)
+                                ? `Notinha ${tx.debtor_name}: ${formatCurrency(Number(tx.third_party_amount))} | Gasto Próprio: ${formatCurrency(Number(tx.amount) - Number(tx.third_party_amount))}`
+                                : `100% Notinha de ${tx.debtor_name || 'Terceiro'}`
+                            }
+                          >
+                            <Users className="h-2.5 w-2.5 text-amber-400" />
+                            {tx.third_party_amount && Number(tx.third_party_amount) < Number(tx.amount) ? (
+                              <span>
+                                {tx.debtor_name || 'Notinha'}: {formatCurrency(Number(tx.third_party_amount))}
+                                <span className="text-slate-400 font-normal ml-1">
+                                  (Meu: {formatCurrency(Number(tx.amount) - Number(tx.third_party_amount))})
+                                </span>
+                              </span>
+                            ) : (
+                              <span>{tx.debtor_name || 'Notinha'}</span>
+                            )}
                           </span>
                         )}
 
@@ -318,14 +337,26 @@ export function TransactionList({
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => handleDelete(tx.id)}
-                      disabled={deletingId === tx.id}
-                      className="opacity-80 sm:opacity-0 sm:group-hover:opacity-100 p-2 sm:p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer shrink-0"
-                      title="Excluir lançamento"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {onEditTransaction && (
+                        <button
+                          onClick={() => onEditTransaction(tx)}
+                          className="opacity-80 sm:opacity-0 sm:group-hover:opacity-100 p-2 sm:p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all cursor-pointer shrink-0"
+                          title="Editar lançamento"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleDelete(tx.id)}
+                        disabled={deletingId === tx.id}
+                        className="opacity-80 sm:opacity-0 sm:group-hover:opacity-100 p-2 sm:p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer shrink-0"
+                        title="Excluir lançamento"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )
