@@ -4,19 +4,20 @@ import React, { useState } from 'react'
 import {
   HandCoins,
   PlusCircle,
-  TrendingDown,
   CheckCircle2,
   DollarSign,
   AlertCircle,
   FileText,
   Trash2,
   QrCode,
-  Sparkles,
+  Calendar,
+  Clock,
+  AlertTriangle,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import { InformalDebt } from '@/types/finance'
 import {
   payInformalDebtAction,
@@ -42,10 +43,23 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
   const [totalAmount, setTotalAmount] = useState('')
   const [initialPaid, setInitialPaid] = useState('')
   const [notes, setNotes] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [hasNoDueDate, setHasNoDueDate] = useState(true)
   const [loadingNew, setLoadingNew] = useState(false)
   const [newError, setNewError] = useState('')
 
   const [feedback, setFeedback] = useState<string | null>(null)
+
+  // Sanitizador monetário: bloqueia letras e aceita apenas números e uma vírgula
+  const handleAmountChange = (val: string, setter: (v: string) => void) => {
+    const clean = val.replace(/[^0-9.,]/g, '')
+    let normalized = clean.replace(/\./g, ',')
+    const parts = normalized.split(',')
+    if (parts.length > 2) {
+      normalized = `${parts[0]},${parts.slice(1).join('')}`
+    }
+    setter(normalized)
+  }
 
   // Cálculos consolidados
   const totalOriginalAll = debts.reduce((acc, d) => acc + Number(d.total_amount), 0)
@@ -115,6 +129,11 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
       return
     }
 
+    if (!hasNoDueDate && !dueDate) {
+      setNewError('Informe a data de vencimento/pagamento ou marque a opção "Sem data definida".')
+      return
+    }
+
     setLoadingNew(true)
     try {
       await createInformalDebtAction({
@@ -122,6 +141,7 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
         total_amount: parsedTotal,
         paid_amount: parsedPaid,
         notes: notes.trim() || undefined,
+        due_date: hasNoDueDate ? null : (dueDate || null),
       })
 
       setFeedback(`Dívida com ${creditorName} cadastrada com sucesso!`)
@@ -130,6 +150,8 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
       setTotalAmount('')
       setInitialPaid('')
       setNotes('')
+      setDueDate('')
+      setHasNoDueDate(true)
       setTimeout(() => setFeedback(null), 5000)
     } catch (err: unknown) {
       setNewError(err instanceof Error ? err.message : 'Erro ao cadastrar dívida.')
@@ -264,30 +286,85 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
                   >
                     {/* Header do Card */}
                     <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h4 className="font-bold text-base text-white">{debt.creditor_name}</h4>
                           {isPaidOff ? (
-                            <Badge variant="success" className="text-[10px]">
+                            <Badge variant="success" className="text-[10px] shrink-0">
                               100% Quitado
                             </Badge>
                           ) : (
-                            <Badge variant="info" className="text-[10px]">
+                            <Badge variant="info" className="text-[10px] shrink-0">
                               Em Aberto
                             </Badge>
                           )}
+
+                          {/* Data de Vencimento / Prazo */}
+                          {debt.due_date ? (
+                            (() => {
+                              const todayStr = new Date().toISOString().split('T')[0]
+                              const isOverdue = !isPaidOff && debt.due_date < todayStr
+                              const todayDate = new Date()
+                              todayDate.setHours(0, 0, 0, 0)
+                              const [y, m, d] = debt.due_date.split('-').map(Number)
+                              const dueObj = new Date(y, m - 1, d)
+                              const diffDays = Math.ceil(
+                                (dueObj.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24)
+                              )
+
+                              if (isPaidOff) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.08] shrink-0 whitespace-nowrap">
+                                    <Calendar className="h-3 w-3 text-slate-500" />
+                                    Vencia em {formatDate(debt.due_date)}
+                                  </span>
+                                )
+                              }
+
+                              if (isOverdue) {
+                                return (
+                                  <Badge className="bg-rose-500/15 border-rose-500/30 text-rose-300 text-[10px] flex items-center gap-1 font-semibold shrink-0 whitespace-nowrap">
+                                    <AlertTriangle className="h-3 w-3 text-rose-400" />
+                                    Venceu em {formatDate(debt.due_date)}
+                                  </Badge>
+                                )
+                              }
+
+                              if (diffDays <= 7 && diffDays >= 0) {
+                                return (
+                                  <Badge className="bg-amber-500/15 border-amber-500/30 text-amber-300 text-[10px] flex items-center gap-1 font-semibold shrink-0 whitespace-nowrap">
+                                    <Clock className="h-3 w-3 text-amber-400" />
+                                    Vence em breve ({formatDate(debt.due_date)})
+                                  </Badge>
+                                )
+                              }
+
+                              return (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20 shrink-0 whitespace-nowrap">
+                                  <Calendar className="h-3 w-3 text-cyan-400" />
+                                  Vence em {formatDate(debt.due_date)}
+                                </span>
+                              )
+                            })()
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-white/[0.03] px-2 py-0.5 rounded-md border border-white/[0.06] shrink-0 whitespace-nowrap">
+                              <Clock className="h-3 w-3 text-slate-500" />
+                              Sem prazo definido
+                            </span>
+                          )}
                         </div>
+
                         {debt.notes && (
                           <p className="text-xs text-slate-400 flex items-center gap-1">
-                            <FileText className="h-3 w-3 text-slate-500" />
-                            {debt.notes}
+                            <FileText className="h-3 w-3 text-slate-500 shrink-0" />
+                            <span>{debt.notes}</span>
                           </p>
                         )}
                       </div>
 
                       <button
                         onClick={() => handleDeleteDebt(debt.id, debt.creditor_name)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer"
+                        className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer shrink-0"
                         title="Excluir dívida"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -424,7 +501,7 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
                   autoFocus
                   placeholder="Ex: 400,00"
                   value={payAmount}
-                  onChange={(e) => setPayAmount(e.target.value)}
+                  onChange={(e) => handleAmountChange(e.target.value, setPayAmount)}
                   className="w-full bg-[#151c2e] border border-white/[0.08] rounded-xl px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-cyan-500/60"
                 />
               </div>
@@ -512,7 +589,7 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
                     required
                     placeholder="0,00"
                     value={totalAmount}
-                    onChange={(e) => setTotalAmount(e.target.value)}
+                    onChange={(e) => handleAmountChange(e.target.value, setTotalAmount)}
                     className="w-full bg-[#151c2e] border border-white/[0.08] rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500/60"
                   />
                 </div>
@@ -524,10 +601,54 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
                     type="text"
                     placeholder="0,00"
                     value={initialPaid}
-                    onChange={(e) => setInitialPaid(e.target.value)}
+                    onChange={(e) => handleAmountChange(e.target.value, setInitialPaid)}
                     className="w-full bg-[#151c2e] border border-white/[0.08] rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500/60"
                   />
                 </div>
+              </div>
+
+              {/* Data Prevista de Pagamento e Checkbox 'Sem data' */}
+              <div className="space-y-2 p-3 rounded-xl bg-black/25 border border-white/[0.06]">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                    <span>Data de Pagamento</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-400 hover:text-cyan-300 select-none">
+                    <input
+                      type="checkbox"
+                      checked={hasNoDueDate}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setHasNoDueDate(checked)
+                        if (!checked && !dueDate) {
+                          setDueDate(new Date().toISOString().split('T')[0])
+                        }
+                      }}
+                      className="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                    />
+                    <span>Sem data</span>
+                  </label>
+                </div>
+
+                {!hasNoDueDate ? (
+                  <div className="space-y-1">
+                    <input
+                      type="date"
+                      required={!hasNoDueDate}
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="w-full bg-[#151c2e] border border-cyan-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400 font-mono"
+                    />
+                    <p className="text-[10px] text-slate-400">
+                      Data combinada para quitação com o credor.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic">
+                    ⏳ Prazo indeterminado / a combinar.
+                  </p>
+                )}
               </div>
 
               <div>

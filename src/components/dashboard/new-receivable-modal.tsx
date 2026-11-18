@@ -24,6 +24,21 @@ export function NewReceivableModal({
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
+  // Sanitizador monetário: bloqueia letras e aceita apenas números e uma vírgula
+  const handleAmountChange = (val: string) => {
+    const clean = val.replace(/[^0-9.,]/g, '')
+    let normalized = clean.replace(/\./g, ',')
+    const parts = normalized.split(',')
+    if (parts.length > 2) {
+      normalized = `${parts[0]},${parts.slice(1).join('')}`
+    }
+    if (normalized.includes(',')) {
+      const [intP, decP] = normalized.split(',')
+      normalized = `${intP},${decP.slice(0, 2)}`
+    }
+    setAmount(normalized)
+  }
+
   if (!isOpen) return null
 
   const frequentDebtors = ['Luiza', 'Nalyne', 'Yara', 'Marcos', 'Lucas']
@@ -158,7 +173,7 @@ export function NewReceivableModal({
               required
               placeholder="0,00"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => handleAmountChange(e.target.value)}
               className="w-full bg-[#151c2e] border border-white/[0.08] rounded-xl px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-500"
             />
           </div>
@@ -173,10 +188,10 @@ export function NewReceivableModal({
                 <button
                   type="button"
                   onClick={() => {
-                    const val = Math.max(1, (parseInt(installmentCurrent, 10) || 1) - 1)
-                    setInstallmentCurrent(String(val))
+                    const cur = parseInt(installmentCurrent, 10) || 1
+                    setInstallmentCurrent(String(Math.max(1, cur - 1)))
                   }}
-                  className="h-8 w-8 rounded-l-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                  className="h-8 w-8 rounded-l-lg bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 active:bg-amber-600 active:text-black flex items-center justify-center font-bold text-base transition-colors cursor-pointer select-none"
                 >
                   -
                 </button>
@@ -186,17 +201,24 @@ export function NewReceivableModal({
                   max={installmentTotal}
                   value={installmentCurrent}
                   onWheel={(e) => e.currentTarget.blur()}
-                  onChange={(e) => setInstallmentCurrent(e.target.value)}
-                  className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none"
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '')
+                    setInstallmentCurrent(raw)
+                  }}
+                  className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <button
                   type="button"
                   onClick={() => {
+                    const cur = parseInt(installmentCurrent, 10) || 1
                     const tot = parseInt(installmentTotal, 10) || 1
-                    const val = Math.min(tot, (parseInt(installmentCurrent, 10) || 1) + 1)
-                    setInstallmentCurrent(String(val))
+                    const nextCur = cur + 1
+                    setInstallmentCurrent(String(nextCur))
+                    if (nextCur > tot) {
+                      setInstallmentTotal(String(nextCur))
+                    }
                   }}
-                  className="h-8 w-8 rounded-r-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                  className="h-8 w-8 rounded-r-lg bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 active:bg-amber-600 active:text-black flex items-center justify-center font-bold text-base transition-colors cursor-pointer select-none"
                 >
                   +
                 </button>
@@ -211,13 +233,15 @@ export function NewReceivableModal({
                 <button
                   type="button"
                   onClick={() => {
-                    const val = Math.max(1, (parseInt(installmentTotal, 10) || 1) - 1)
-                    setInstallmentTotal(String(val))
-                    if ((parseInt(installmentCurrent, 10) || 1) > val) {
-                      setInstallmentCurrent(String(val))
+                    const cur = parseInt(installmentCurrent, 10) || 1
+                    const tot = parseInt(installmentTotal, 10) || 1
+                    const prevTot = Math.max(1, tot - 1)
+                    setInstallmentTotal(String(prevTot))
+                    if (cur > prevTot) {
+                      setInstallmentCurrent(String(prevTot))
                     }
                   }}
-                  className="h-8 w-8 rounded-l-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                  className="h-8 w-8 rounded-l-lg bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 active:bg-amber-600 active:text-black flex items-center justify-center font-bold text-base transition-colors cursor-pointer select-none"
                 >
                   -
                 </button>
@@ -227,16 +251,19 @@ export function NewReceivableModal({
                   max="48"
                   value={installmentTotal}
                   onWheel={(e) => e.currentTarget.blur()}
-                  onChange={(e) => setInstallmentTotal(e.target.value)}
-                  className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none"
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '')
+                    setInstallmentTotal(raw)
+                  }}
+                  className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    const val = (parseInt(installmentTotal, 10) || 1) + 1
-                    setInstallmentTotal(String(val))
+                    const tot = parseInt(installmentTotal, 10) || 1
+                    setInstallmentTotal(String(tot + 1))
                   }}
-                  className="h-8 w-8 rounded-r-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                  className="h-8 w-8 rounded-r-lg bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 active:bg-amber-600 active:text-black flex items-center justify-center font-bold text-base transition-colors cursor-pointer select-none"
                 >
                   +
                 </button>

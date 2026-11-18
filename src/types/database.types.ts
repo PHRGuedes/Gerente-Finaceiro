@@ -67,6 +67,7 @@ export interface Database {
           installment_current: number
           installment_total: number
           billing_cycle: string | null
+          is_recurring?: boolean
           created_at: string
           updated_at: string
         }
@@ -85,6 +86,7 @@ export interface Database {
           installment_current?: number
           installment_total?: number
           billing_cycle?: string | null
+          is_recurring?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -103,6 +105,7 @@ export interface Database {
           installment_current?: number
           installment_total?: number
           billing_cycle?: string | null
+          is_recurring?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -161,6 +164,7 @@ export interface Database {
           total_amount: number
           paid_amount: number
           notes: string | null
+          due_date: string | null
           created_at: string
           updated_at: string
         }
@@ -171,6 +175,7 @@ export interface Database {
           total_amount: number
           paid_amount?: number
           notes?: string | null
+          due_date?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -181,6 +186,7 @@ export interface Database {
           total_amount?: number
           paid_amount?: number
           notes?: string | null
+          due_date?: string | null
           created_at?: string
           updated_at?: string
         }

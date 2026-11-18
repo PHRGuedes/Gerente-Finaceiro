@@ -76,11 +76,13 @@ export async function createTransactionAction(formData: {
   installment_current?: number
   installment_total?: number
   billing_cycle?: string | null
+  is_recurring?: boolean
 }) {
   const supabase = await createClient()
   const user = await getAuthenticatedUser(supabase)
 
   const is_third_party = Boolean(formData.is_third_party)
+  const is_recurring = Boolean(formData.is_recurring)
   const debtor_name = is_third_party && formData.debtor_name ? formData.debtor_name.trim() : null
   const third_party_amount =
     is_third_party && formData.third_party_amount && formData.third_party_amount > 0
@@ -119,30 +121,45 @@ export async function createTransactionAction(formData: {
         ? `${formData.description.trim()} (${proj.installmentCurrent}/${proj.installmentTotal})`
         : formData.description.trim()
 
-    const { data: tx, error: txError } = await supabase
+    const insertPayload: Record<string, unknown> = {
+      user_id: user.id,
+      type: formData.type,
+      description: descWithInstallment,
+      amount: formData.amount,
+      date: proj.projectedDate,
+      payment_method: formData.payment_method,
+      category: formData.category,
+      is_third_party,
+      debtor_name,
+      third_party_amount,
+      installment_current: proj.installmentCurrent,
+      installment_total: proj.installmentTotal,
+      billing_cycle: proj.cycleId,
+      is_recurring,
+    }
+
+    let { data: tx, error: txError } = await supabase
       .from('transactions')
-      .insert({
-        user_id: user.id,
-        type: formData.type,
-        description: descWithInstallment,
-        amount: formData.amount,
-        date: proj.projectedDate,
-        payment_method: formData.payment_method,
-        category: formData.category,
-        is_third_party,
-        debtor_name,
-        third_party_amount,
-        installment_current: proj.installmentCurrent,
-        installment_total: proj.installmentTotal,
-        billing_cycle: proj.cycleId,
-      })
+      .insert(insertPayload as never)
       .select('id')
       .single()
 
-    if (txError) {
+    // Fallback defensivo: se a coluna is_recurring ainda não existir no banco
+    if (txError && txError.message?.includes('is_recurring')) {
+      delete insertPayload.is_recurring
+      const retry = await supabase
+        .from('transactions')
+        .insert(insertPayload as never)
+        .select('id')
+        .single()
+      tx = retry.data
+      txError = retry.error
+    }
+
+    if (txError || !tx) {
       console.error('Erro ao inserir transação da parcela:', txError)
       throw new Error(
-        `Falha ao registrar parcela ${proj.installmentCurrent}/${proj.installmentTotal}: ${txError.message}`
+        `Falha ao registrar parcela ${proj.installmentCurrent}/${proj.installmentTotal}: ${txError?.message || 'Erro desconhecido'}`
       )
     }
 
@@ -565,26 +582,87 @@ export async function createInformalDebtAction(params: {
   total_amount: number
   paid_amount?: number
   notes?: string
+  due_date?: string | null
 }) {
   const supabase = await createClient()
   const user = await getAuthenticatedUser(supabase)
 
-  const { data, error } = await supabase
+  const insertPayload: Record<string, unknown> = {
+    user_id: user.id,
+    creditor_name: params.creditor_name.trim(),
+    total_amount: params.total_amount,
+    paid_amount: params.paid_amount || 0,
+    notes: params.notes ? params.notes.trim() : null,
+    due_date: params.due_date || null,
+  }
+
+  let { data, error } = await supabase
     .from('informal_debts')
-    .insert({
-      user_id: user.id,
-      creditor_name: params.creditor_name.trim(),
-      total_amount: params.total_amount,
-      paid_amount: params.paid_amount || 0,
-      notes: params.notes ? params.notes.trim() : null,
-    })
+    .insert(insertPayload as never)
     .select()
     .single()
+
+  // Fallback defensivo: se a coluna due_date ainda não existir no banco
+  if (error && error.message?.includes('due_date')) {
+    delete insertPayload.due_date
+    const retry = await supabase
+      .from('informal_debts')
+      .insert(insertPayload as never)
+      .select()
+      .single()
+    data = retry.data
+    error = retry.error
+  }
 
   if (error) throw new Error(`Erro ao cadastrar dívida informal: ${error.message}`)
 
   revalidatePath('/')
   return { success: true, debt: data }
+}
+
+/**
+ * Atualiza os dados de uma dívida informal (valor, notas ou data de pagamento).
+ */
+export async function updateInformalDebtAction(
+  id: string,
+  params: {
+    creditor_name?: string
+    total_amount?: number
+    paid_amount?: number
+    notes?: string | null
+    due_date?: string | null
+  }
+) {
+  const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
+
+  const updatePayload: Record<string, unknown> = {}
+  if (params.creditor_name !== undefined) updatePayload.creditor_name = params.creditor_name.trim()
+  if (params.total_amount !== undefined) updatePayload.total_amount = params.total_amount
+  if (params.paid_amount !== undefined) updatePayload.paid_amount = params.paid_amount
+  if (params.notes !== undefined) updatePayload.notes = params.notes ? params.notes.trim() : null
+  if (params.due_date !== undefined) updatePayload.due_date = params.due_date || null
+
+  let { error } = await supabase
+    .from('informal_debts')
+    .update(updatePayload as never)
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error && error.message?.includes('due_date')) {
+    delete updatePayload.due_date
+    const retry = await supabase
+      .from('informal_debts')
+      .update(updatePayload as never)
+      .eq('id', id)
+      .eq('user_id', user.id)
+    error = retry.error
+  }
+
+  if (error) throw new Error(`Erro ao atualizar dívida: ${error.message}`)
+
+  revalidatePath('/')
+  return { success: true }
 }
 
 /**
@@ -899,6 +977,7 @@ export async function updateTransactionAction(
     is_third_party?: boolean
     debtor_name?: string | null
     third_party_amount?: number | null
+    is_recurring?: boolean
   }
 ) {
   const supabase = await createClient()
@@ -923,6 +1002,7 @@ export async function updateTransactionAction(
   }
 
   const is_third_party = Boolean(formData.is_third_party)
+  const is_recurring = formData.is_recurring !== undefined ? Boolean(formData.is_recurring) : undefined
   const debtor_name = is_third_party && formData.debtor_name ? formData.debtor_name.trim() : null
   const third_party_amount =
     is_third_party && formData.third_party_amount && formData.third_party_amount > 0
@@ -937,22 +1017,37 @@ export async function updateTransactionAction(
       ? getCycleForDate(formData.date)
       : oldTx.billing_cycle || getCycleForDate(formData.date)
 
-  const { error: updateErr } = await supabase
+  const updatePayload: Record<string, unknown> = {
+    type: formData.type,
+    description: formData.description.trim(),
+    amount: formData.amount,
+    date: formData.date,
+    payment_method: formData.payment_method,
+    category: formData.category,
+    is_third_party,
+    debtor_name,
+    third_party_amount,
+    billing_cycle: newCycle,
+  }
+  if (is_recurring !== undefined) {
+    updatePayload.is_recurring = is_recurring
+  }
+
+  let { error: updateErr } = await supabase
     .from('transactions')
-    .update({
-      type: formData.type,
-      description: formData.description.trim(),
-      amount: formData.amount,
-      date: formData.date,
-      payment_method: formData.payment_method,
-      category: formData.category,
-      is_third_party,
-      debtor_name,
-      third_party_amount,
-      billing_cycle: newCycle,
-    })
+    .update(updatePayload as never)
     .eq('id', txId)
     .eq('user_id', user.id)
+
+  if (updateErr && updateErr.message?.includes('is_recurring')) {
+    delete updatePayload.is_recurring
+    const retry = await supabase
+      .from('transactions')
+      .update(updatePayload as never)
+      .eq('id', txId)
+      .eq('user_id', user.id)
+    updateErr = retry.error
+  }
 
   if (updateErr) {
     throw new Error(`Erro ao atualizar lançamento: ${updateErr.message}`)

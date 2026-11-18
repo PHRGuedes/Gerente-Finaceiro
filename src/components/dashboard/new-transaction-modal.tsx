@@ -10,6 +10,7 @@ import {
   Banknote,
   Users,
   Layers,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
@@ -33,7 +34,6 @@ export function NewTransactionModal({
   categories,
   editingTransaction = null,
   currentCycleId,
-  currentCycleLabel,
 }: NewTransactionModalProps) {
   const initialTotalVal = editingTransaction ? Number(editingTransaction.amount) : 0
   const initialTpVal =
@@ -67,6 +67,9 @@ export function NewTransactionModal({
   const [thirdPartyAmount, setThirdPartyAmount] = useState(
     initialIsPartial ? String(initialTpVal).replace('.', ',') : ''
   )
+  const [isRecurring, setIsRecurring] = useState(
+    Boolean(editingTransaction?.is_recurring)
+  )
   const [installmentCurrent, setInstallmentCurrent] = useState(
     String(editingTransaction?.installment_current || 1)
   )
@@ -80,6 +83,21 @@ export function NewTransactionModal({
   const [selectedCycleId, setSelectedCycleId] = useState(defaultCycle)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  // Sanitizador monetário: bloqueia letras e aceita apenas números e uma vírgula
+  const handleAmountChange = (val: string, setter: (v: string) => void) => {
+    const clean = val.replace(/[^0-9.,]/g, '')
+    let normalized = clean.replace(/\./g, ',')
+    const parts = normalized.split(',')
+    if (parts.length > 2) {
+      normalized = `${parts[0]},${parts.slice(1).join('')}`
+    }
+    if (normalized.includes(',')) {
+      const [intP, decP] = normalized.split(',')
+      normalized = `${intP},${decP.slice(0, 2)}`
+    }
+    setter(normalized)
+  }
 
   const cycleOptions = React.useMemo(() => {
     const base = currentCycleId || getCycleForDate(date)
@@ -173,6 +191,7 @@ export function NewTransactionModal({
           is_third_party: isThirdParty,
           debtor_name: isThirdParty ? debtorName.trim() : null,
           third_party_amount: finalThirdPartyAmount,
+          is_recurring: isRecurring,
         })
       } else {
         await createTransactionAction({
@@ -188,6 +207,7 @@ export function NewTransactionModal({
           installment_current: cur,
           installment_total: tot,
           billing_cycle: paymentMethod === 'credit' ? selectedCycleId : undefined,
+          is_recurring: isRecurring,
         })
       }
 
@@ -198,6 +218,7 @@ export function NewTransactionModal({
       setDebtorName('')
       setSplitMode('full')
       setThirdPartyAmount('')
+      setIsRecurring(false)
       setInstallmentCurrent('1')
       setInstallmentTotal('1')
       onClose()
@@ -293,7 +314,7 @@ export function NewTransactionModal({
                   placeholder="0,00"
                   required
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => handleAmountChange(e.target.value, setAmount)}
                   className="w-full bg-[#151c2e] border border-white/[0.08] rounded-xl pl-9 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-emerald-500/60"
                 />
               </div>
@@ -415,10 +436,10 @@ export function NewTransactionModal({
                     <button
                       type="button"
                       onClick={() => {
-                        const val = Math.max(1, (parseInt(installmentCurrent, 10) || 1) - 1)
-                        setInstallmentCurrent(String(val))
+                        const cur = parseInt(installmentCurrent, 10) || 1
+                        setInstallmentCurrent(String(Math.max(1, cur - 1)))
                       }}
-                      className="h-8 w-8 rounded-l-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                      className="h-8 w-8 rounded-l-lg bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 active:bg-violet-600 active:text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer select-none"
                     >
                       -
                     </button>
@@ -428,17 +449,24 @@ export function NewTransactionModal({
                       max={installmentTotal}
                       value={installmentCurrent}
                       onWheel={(e) => e.currentTarget.blur()}
-                      onChange={(e) => setInstallmentCurrent(e.target.value)}
-                      className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none"
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, '')
+                        setInstallmentCurrent(raw)
+                      }}
+                      className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <button
                       type="button"
                       onClick={() => {
+                        const cur = parseInt(installmentCurrent, 10) || 1
                         const tot = parseInt(installmentTotal, 10) || 1
-                        const val = Math.min(tot, (parseInt(installmentCurrent, 10) || 1) + 1)
-                        setInstallmentCurrent(String(val))
+                        const nextCur = cur + 1
+                        setInstallmentCurrent(String(nextCur))
+                        if (nextCur > tot) {
+                          setInstallmentTotal(String(nextCur))
+                        }
                       }}
-                      className="h-8 w-8 rounded-r-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                      className="h-8 w-8 rounded-r-lg bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 active:bg-violet-600 active:text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer select-none"
                     >
                       +
                     </button>
@@ -453,13 +481,15 @@ export function NewTransactionModal({
                     <button
                       type="button"
                       onClick={() => {
-                        const val = Math.max(1, (parseInt(installmentTotal, 10) || 1) - 1)
-                        setInstallmentTotal(String(val))
-                        if ((parseInt(installmentCurrent, 10) || 1) > val) {
-                          setInstallmentCurrent(String(val))
+                        const cur = parseInt(installmentCurrent, 10) || 1
+                        const tot = parseInt(installmentTotal, 10) || 1
+                        const prevTot = Math.max(1, tot - 1)
+                        setInstallmentTotal(String(prevTot))
+                        if (cur > prevTot) {
+                          setInstallmentCurrent(String(prevTot))
                         }
                       }}
-                      className="h-8 w-8 rounded-l-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                      className="h-8 w-8 rounded-l-lg bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 active:bg-violet-600 active:text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer select-none"
                     >
                       -
                     </button>
@@ -469,16 +499,19 @@ export function NewTransactionModal({
                       max="48"
                       value={installmentTotal}
                       onWheel={(e) => e.currentTarget.blur()}
-                      onChange={(e) => setInstallmentTotal(e.target.value)}
-                      className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none"
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, '')
+                        setInstallmentTotal(raw)
+                      }}
+                      className="w-full text-center bg-[#111726] border-y border-white/[0.08] h-8 text-xs text-white font-mono focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        const val = (parseInt(installmentTotal, 10) || 1) + 1
-                        setInstallmentTotal(String(val))
+                        const tot = parseInt(installmentTotal, 10) || 1
+                        setInstallmentTotal(String(tot + 1))
                       }}
-                      className="h-8 w-8 rounded-r-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer select-none"
+                      className="h-8 w-8 rounded-r-lg bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 active:bg-violet-600 active:text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer select-none"
                     >
                       +
                     </button>
@@ -521,6 +554,29 @@ export function NewTransactionModal({
               ))}
             </select>
           </div>
+
+          {/* Opção de Compra Recorrente / Assinatura (para despesas) */}
+          {type === 'expense' && (
+            <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500/50 h-4 w-4"
+                />
+                <span className="text-xs text-sky-300 font-medium flex items-center gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5 text-sky-400" />
+                  Compra recorrente / Assinatura mensal (Netflix, Spotify, Academia, etc.)
+                </span>
+              </label>
+              {isRecurring && (
+                <p className="text-[10px] text-sky-300/80 pl-6">
+                  Identificada como assinatura recorrente no histórico e relatórios mensais.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Opção de Compra de Terceiros / Notinha (apenas para despesas) */}
           {type === 'expense' && (
@@ -636,7 +692,7 @@ export function NewTransactionModal({
                           type="text"
                           placeholder="0,00"
                           value={thirdPartyAmount}
-                          onChange={(e) => setThirdPartyAmount(e.target.value)}
+                          onChange={(e) => handleAmountChange(e.target.value, setThirdPartyAmount)}
                           className="w-full bg-[#151c2e] border border-amber-500/40 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white font-mono font-semibold focus:outline-none focus:border-amber-400"
                         />
                       </div>

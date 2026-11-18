@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   installment_current INTEGER NOT NULL DEFAULT 1 CHECK (installment_current >= 1),
   installment_total INTEGER NOT NULL DEFAULT 1 CHECK (installment_total >= 1),
   billing_cycle TEXT, -- Formato 'YYYY-MM' (ex: '2026-11')
+  is_recurring BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -109,6 +110,7 @@ CREATE TABLE IF NOT EXISTS public.informal_debts (
   total_amount NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0),
   paid_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (paid_amount >= 0),
   notes TEXT,
+  due_date DATE DEFAULT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

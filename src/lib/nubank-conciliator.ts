@@ -176,31 +176,54 @@ export function parseAndConciliateNubankCSV(
       continue
     }
 
-    // 2. Cruzamento de Compras (Matching com tolerância de até 4 dias de diferença de data e mesmo valor)
-    const match = creditTxs.find((tx) => {
-      if (matchedTxIds.has(tx.id)) return false
+    // 2. Cruzamento de Compras por VALOR DE REFERÊNCIA
+    // Geralmente a descrição do CSV (ex: 'PAG*Restaurante') não bate com o lançamento manual (ex: 'Almoço de domingo').
+    // Por isso, a correspondência prioritária é feita pelo VALOR EXATO no mesmo ciclo de fatura ou data aproximada.
+    const itemCycle = getCycleForDate(item.date)
 
-      const amountMatches = Math.abs(Number(tx.amount) - item.amount) < 0.05
-      if (!amountMatches) return false
+    let bestMatch: Transaction | null = null
+    let bestScore = -1
 
-      const csvDate = new Date(item.date).getTime()
-      const txDate = new Date(tx.date).getTime()
-      const diffDays = Math.abs(csvDate - txDate) / (1000 * 60 * 60 * 24)
+    for (const tx of creditTxs) {
+      if (matchedTxIds.has(tx.id)) continue
 
-      return diffDays <= 4
-    })
+      const txAmount = Number(tx.amount)
+      // Comparação pelo VALOR DE REFERÊNCIA (tolerância de até 5 centavos para eventuais arredondamentos)
+      const amountMatches = Math.abs(txAmount - item.amount) < 0.05
+      if (!amountMatches) continue
 
-    if (match) {
-      matchedTxIds.add(match.id)
+      // Calcular proximidade de data em dias
+      const csvTime = new Date(item.date).getTime()
+      const txTime = new Date(tx.date).getTime()
+      const diffDays = Math.abs(csvTime - txTime) / (1000 * 60 * 60 * 24)
+
+      // Pontuação:
+      // - Prioridade 1: Mesmo ciclo de fatura (+1000 pts)
+      // - Prioridade 2: Proximidade de data (+ até 100 pts)
+      let score = 0
+      if (tx.billing_cycle && tx.billing_cycle === itemCycle) {
+        score += 1000
+      }
+      score += Math.max(0, 100 - diffDays)
+
+      // Permite matching se estiver no mesmo ciclo de fatura ou em até 40 dias de diferença
+      if (score > bestScore && (tx.billing_cycle === itemCycle || diffDays <= 40)) {
+        bestScore = score
+        bestMatch = tx
+      }
+    }
+
+    if (bestMatch) {
+      matchedTxIds.add(bestMatch.id)
       conciliatedItems.push({
         raw: item,
         status: 'conciliated',
-        matchedTransaction: match,
-        suggestedName: match.description,
-        suggestedCategory: match.category,
-        isThirdParty: match.is_third_party,
-        debtorName: match.debtor_name || undefined,
-        billingCycle: match.billing_cycle || getCycleForDate(item.date),
+        matchedTransaction: bestMatch,
+        suggestedName: bestMatch.description,
+        suggestedCategory: bestMatch.category,
+        isThirdParty: bestMatch.is_third_party,
+        debtorName: bestMatch.debtor_name || undefined,
+        billingCycle: bestMatch.billing_cycle || itemCycle,
       })
     } else {
       // 3. Pendentes de Identificação

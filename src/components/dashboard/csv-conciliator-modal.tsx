@@ -559,11 +559,11 @@ export function CSVConciliatorModal({
                                   {item.matchedTransaction?.description || item.raw.title}
                                 </span>
                                 <Badge className="bg-emerald-500/10 text-emerald-300 border-emerald-500/30 text-[10px]">
-                                  Identificado no Sistema
+                                  Conciliado por Valor de Referência
                                 </Badge>
                               </div>
                               <span className="text-[11px] text-slate-400 block mt-0.5">
-                                Original CSV: {item.raw.title} ({formatDate(item.raw.date)}) • Categoria: {item.suggestedCategory}
+                                Estabelecimento no CSV: <strong className="text-slate-300">{item.raw.title}</strong> ({formatDate(item.raw.date)}) • Categoria: {item.suggestedCategory}
                               </span>
                             </div>
                           </div>

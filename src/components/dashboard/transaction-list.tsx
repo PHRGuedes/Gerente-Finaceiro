@@ -33,6 +33,7 @@ import {
   Tag,
   FileSpreadsheet,
   FileDown,
+  RefreshCw,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -285,6 +286,13 @@ export function TransactionList({
                             ) : (
                               <span>{tx.debtor_name || 'Notinha'}</span>
                             )}
+                          </span>
+                        )}
+
+                        {tx.is_recurring && (
+                          <span className="inline-flex items-center gap-1 text-[10px] bg-sky-500/10 text-sky-300 border border-sky-500/20 px-1.5 py-0.5 rounded-md font-medium shrink-0">
+                            <RefreshCw className="h-2.5 w-2.5 text-sky-400" />
+                            Assinatura
                           </span>
                         )}
 
