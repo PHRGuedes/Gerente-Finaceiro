@@ -436,6 +436,7 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
                   transactions={activeCycleTransactions}
                   categories={categories}
                   cycleLabel={activeCycle.label}
+                  cycleId={activeCycle.cycleId}
                   onOpenConciliateCsv={() => setIsCsvModalOpen(true)}
                   onOpenExportPdf={() => setIsPdfModalOpen(true)}
                   onEditTransaction={(tx) => {

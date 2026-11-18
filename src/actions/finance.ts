@@ -1169,3 +1169,91 @@ export async function markPersonReceivablesPaidAction(params: {
   revalidatePath('/')
   return { success: true, totalReceived, count: pendingRecs.length }
 }
+
+/**
+ * Replica as assinaturas/recorrências ativas (installment_total = 1) para um ciclo de faturamento destino.
+ * Ignora transações já lançadas no ciclo destino com a mesma descrição.
+ */
+export async function replicateRecurringSubscriptionsAction(targetCycleId: string) {
+  const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
+
+  // 1. Buscar todas as assinaturas do usuário (is_recurring = true e installment_total = 1)
+  const { data: recurringTxs, error: fetchErr } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('is_recurring', true)
+    .eq('installment_total', 1)
+
+  if (fetchErr) throw new Error(`Erro ao buscar assinaturas: ${fetchErr.message}`)
+  if (!recurringTxs || recurringTxs.length === 0) {
+    return { success: true, count: 0, message: 'Nenhuma assinatura cadastrada para replicar.' }
+  }
+
+  // 2. Buscar transações já existentes no ciclo destino
+  const { data: existingInCycle, error: existErr } = await supabase
+    .from('transactions')
+    .select('description')
+    .eq('user_id', user.id)
+    .eq('billing_cycle', targetCycleId)
+
+  if (existErr) throw new Error(`Erro ao verificar transações do ciclo: ${existErr.message}`)
+  const existingSet = new Set(
+    (existingInCycle || []).map((t) => t.description.trim().toLowerCase())
+  )
+
+  // 3. Pegar apenas as assinaturas únicas por descrição que ainda NÃO estão no ciclo destino
+  const toInsertMap = new Map<string, (typeof recurringTxs)[0]>()
+  for (const tx of recurringTxs) {
+    const key = tx.description.trim().toLowerCase()
+    if (!existingSet.has(key) && !toInsertMap.has(key)) {
+      toInsertMap.set(key, tx)
+    }
+  }
+
+  if (toInsertMap.size === 0) {
+    return {
+      success: true,
+      count: 0,
+      message: 'Todas as assinaturas cadastradas já estão lançadas neste ciclo.',
+    }
+  }
+
+  // 4. Calcular data aproximada no novo ciclo (mantendo o dia original da compra ou dia 10)
+  const [targetYear, targetMonth] = targetCycleId.split('-').map(Number)
+
+  const insertPayloads = Array.from(toInsertMap.values()).map((orig) => {
+    const origDay = orig.date ? Number(orig.date.split('-')[2]) || 10 : 10
+    const maxDayInMonth = new Date(targetYear, targetMonth, 0).getDate()
+    const safeDay = Math.min(origDay, maxDayInMonth)
+    const newDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`
+
+    return {
+      user_id: user.id,
+      type: orig.type,
+      description: orig.description,
+      amount: orig.amount,
+      date: newDate,
+      payment_method: orig.payment_method,
+      category: orig.category,
+      is_third_party: orig.is_third_party,
+      debtor_name: orig.debtor_name,
+      third_party_amount: orig.third_party_amount,
+      installment_current: 1,
+      installment_total: 1,
+      billing_cycle: targetCycleId,
+      is_recurring: true,
+    }
+  })
+
+  const { error: insertErr } = await supabase.from('transactions').insert(insertPayloads as never)
+  if (insertErr) throw new Error(`Erro ao lançar assinaturas: ${insertErr.message}`)
+
+  revalidatePath('/')
+  return {
+    success: true,
+    count: insertPayloads.length,
+    message: `${insertPayloads.length} assinatura(s) lançada(s) com sucesso para o ciclo!`,
+  }
+}
