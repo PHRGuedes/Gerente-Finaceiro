@@ -321,7 +321,7 @@ export function TransactionList({
                     <button
                       onClick={() => handleDelete(tx.id)}
                       disabled={deletingId === tx.id}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer"
+                      className="opacity-80 sm:opacity-0 sm:group-hover:opacity-100 p-2 sm:p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer shrink-0"
                       title="Excluir lançamento"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

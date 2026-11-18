@@ -111,48 +111,48 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
   return (
     <div className="min-h-screen bg-[#07090e] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.07),rgba(255,255,255,0))] text-slate-100 flex flex-col">
       {/* Top Navbar */}
-      <header className="border-b border-white/[0.06] bg-[#0c101a]/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+      <header className="border-b border-white/[0.06] bg-[#0c101a]/90 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 lg:gap-4">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-500 flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
               <Wallet className="h-4.5 w-4.5 text-black" />
             </div>
             <div>
-              <span className="font-bold text-sm tracking-tight text-white block leading-none">
+              <span className="font-bold text-sm tracking-tight text-white block leading-none whitespace-nowrap">
                 Controle Financeiro
               </span>
             </div>
           </div>
 
-          {/* Abas de Navegação Principal */}
-          <div className="hidden lg:flex items-center gap-1 p-1 bg-[#111726]/90 rounded-xl border border-white/[0.08]">
+          {/* Abas de Navegação Principal (Desktop - alturas uniformes h-9 e sem quebra de texto) */}
+          <nav className="hidden lg:flex items-center gap-1 p-1 bg-[#111726]/90 rounded-xl border border-white/[0.08] shrink-0">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`h-8 px-3 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
+              className={`h-9 px-3.5 rounded-lg text-xs font-medium inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-all border ${
                 activeTab === 'overview'
-                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 font-semibold shadow-sm'
+                  : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              Visão Geral
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+              <span>Visão Geral</span>
             </button>
 
             <button
               onClick={() => setActiveTab('notinhas')}
-              className={`h-8 px-3 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
+              className={`h-9 px-3.5 rounded-lg text-xs font-medium inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-all border ${
                 activeTab === 'notinhas'
-                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 font-semibold shadow-sm'
+                  : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <Users className="h-3.5 w-3.5" />
-              Notinhas
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              <span>Notinhas</span>
               {pendingNotinhasCount > 0 && (
                 <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold leading-none ${
                     activeTab === 'notinhas'
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold'
+                      ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
                       : 'bg-amber-500/15 text-amber-400'
                   }`}
                 >
@@ -163,69 +163,70 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
 
             <button
               onClick={() => setActiveTab('forecast')}
-              className={`h-8 px-3 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
+              className={`h-9 px-3.5 rounded-lg text-xs font-medium inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-all border ${
                 activeTab === 'forecast'
-                  ? 'bg-teal-500/15 text-teal-300 border border-teal-500/30 font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                  ? 'bg-teal-500/15 text-teal-300 border-teal-500/30 font-semibold shadow-sm'
+                  : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <TrendingUp className="h-3.5 w-3.5" />
-              Previsão
+              <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+              <span>Previsão</span>
             </button>
 
             <button
               onClick={() => setActiveTab('debts')}
-              className={`h-8 px-3 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
+              className={`h-9 px-3.5 rounded-lg text-xs font-medium inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-all border ${
                 activeTab === 'debts'
-                  ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                  ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30 font-semibold shadow-sm'
+                  : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <HandCoins className="h-3.5 w-3.5" />
-              Dívidas
+              <HandCoins className="h-3.5 w-3.5 shrink-0" />
+              <span>Dívidas</span>
             </button>
 
             <button
               onClick={() => setActiveTab('poker')}
-              className={`h-8 px-3 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
+              className={`h-9 px-3.5 rounded-lg text-xs font-medium inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-all border ${
                 activeTab === 'poker'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-semibold shadow-sm'
+                  : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <Spade className="h-3.5 w-3.5 text-emerald-400" />
-              Poker
+              <Spade className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+              <span>Poker</span>
             </button>
-          </div>
+          </nav>
 
-          <div className="flex items-center gap-2.5">
-            {/* Ciclo Info Badge */}
-            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-300 bg-[#111726]/90 border border-white/[0.08] px-3 h-8 rounded-lg font-mono">
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse"></span>
-              <span>{billingCycle.label}</span>
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Ciclo Info Badge (h-9 uniforme, responsivo e sem quebra de texto) */}
+            <div className="hidden md:inline-flex items-center gap-2 text-xs text-slate-300 bg-[#111726]/90 border border-white/[0.08] px-3.5 h-9 rounded-xl font-mono whitespace-nowrap shrink-0">
+              <span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse shrink-0"></span>
+              <span className="hidden 2xl:inline">{billingCycle.label}</span>
+              <span className="2xl:hidden">Fatura 04/{billingCycle.cycleId.split('-')[1]}</span>
             </div>
 
-            {/* Botão Novo Lançamento */}
-            <Button
-              size="sm"
+            {/* Botão Novo Lançamento (h-9 uniforme com os demais botões) */}
+            <button
+              type="button"
               onClick={() => setIsNewTxOpen(true)}
-              className="h-8 px-2.5 sm:px-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-1.5 rounded-lg"
+              className="h-9 px-3 sm:px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs rounded-xl shadow-md shadow-emerald-500/20 inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-[0.98] cursor-pointer"
             >
-              <PlusCircle className="h-3.5 w-3.5 text-black shrink-0" />
+              <PlusCircle className="h-4 w-4 text-black shrink-0" />
               <span className="hidden sm:inline">Novo Lançamento</span>
               <span className="sm:hidden">Novo</span>
-            </Button>
+            </button>
 
-            {/* Usuário Conectado & Logout */}
+            {/* Usuário Conectado & Logout (alinhado rigorosamente a h-9) */}
             {currentUser && (
-              <div className="flex items-center gap-1.5 pl-2 border-l border-white/10 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 pl-2 sm:pl-2.5 border-l border-white/10 shrink-0 h-9">
                 <div
-                  className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-bold text-xs flex items-center justify-center shrink-0 uppercase"
+                  className="h-9 w-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center shrink-0 uppercase select-none shadow-sm"
                   title={currentUser.email}
                 >
                   {currentUser.fullName.charAt(0) || currentUser.email.charAt(0)}
                 </div>
-                <div className="hidden xl:block text-left text-xs max-w-[120px] truncate leading-tight">
+                <div className="hidden xl:block text-left text-xs max-w-[120px] truncate leading-tight select-none">
                   <span className="font-semibold text-white truncate block">
                     {currentUser.fullName}
                   </span>
@@ -238,42 +239,42 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
                   onClick={async () => {
                     await signOutAction()
                   }}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                  className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer shrink-0"
                   title="Sair da Conta (Logout)"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-4 w-4 shrink-0" />
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Abas Secundárias Mobile e Tablets com Scroll Suave */}
-        <div className="lg:hidden flex items-center gap-1 overflow-x-auto scrollbar-none p-1.5 bg-[#090d16] border-t border-white/[0.06] text-xs">
+        {/* Abas Secundárias Mobile e Tablets com Scroll Suave (touch-friendly h-9) */}
+        <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-none px-3.5 py-2 bg-[#090d17] border-t border-white/[0.06] text-xs">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
               activeTab === 'overview'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/35 font-semibold shadow-sm'
+                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
             }`}
           >
-            <LayoutDashboard className="h-3.5 w-3.5" />
-            Visão Geral
+            <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+            <span>Visão Geral</span>
           </button>
 
           <button
             onClick={() => setActiveTab('notinhas')}
-            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
               activeTab === 'notinhas'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/35 font-semibold shadow-sm'
+                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
             }`}
           >
-            <Users className="h-3.5 w-3.5" />
-            Notinhas
+            <Users className="h-3.5 w-3.5 shrink-0" />
+            <span>Notinhas</span>
             {pendingNotinhasCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-amber-500/20 text-amber-300 font-bold">
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold leading-none">
                 {pendingNotinhasCount}
               </span>
             )}
@@ -281,44 +282,44 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
 
           <button
             onClick={() => setActiveTab('forecast')}
-            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
               activeTab === 'forecast'
-                ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30 font-semibold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-teal-500/20 text-teal-300 border-teal-500/35 font-semibold shadow-sm'
+                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
             }`}
           >
-            <TrendingUp className="h-3.5 w-3.5" />
-            Previsão
+            <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+            <span>Previsão</span>
           </button>
 
           <button
             onClick={() => setActiveTab('debts')}
-            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
               activeTab === 'debts'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/35 font-semibold shadow-sm'
+                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
             }`}
           >
-            <HandCoins className="h-3.5 w-3.5" />
-            Dívidas
+            <HandCoins className="h-3.5 w-3.5 shrink-0" />
+            <span>Dívidas</span>
           </button>
 
           <button
             onClick={() => setActiveTab('poker')}
-            className={`shrink-0 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 transition-all ${
+            className={`h-9 px-3.5 rounded-xl font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 transition-all active:scale-95 border ${
               activeTab === 'poker'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/35 font-semibold shadow-sm'
+                : 'bg-[#111726]/60 border-white/[0.06] text-slate-400 hover:text-white'
             }`}
           >
-            <Spade className="h-3.5 w-3.5" />
-            Poker
+            <Spade className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+            <span>Poker</span>
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
+      {/* Main Content Area (otimizado com padding respirável em celulares) */}
+      <main className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 flex-1 w-full">
         {/* Banner Informativo da Regra Financeira */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-[#0e1626] to-violet-950/30 border border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs text-slate-300">
           <div className="flex items-center gap-2">
