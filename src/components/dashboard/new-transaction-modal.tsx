@@ -563,16 +563,47 @@ export function NewTransactionModal({
                   type="checkbox"
                   checked={isRecurring}
                   onChange={(e) => setIsRecurring(e.target.checked)}
-                  className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500/50 h-4 w-4"
+                  className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500/50 h-4 w-4 cursor-pointer"
                 />
                 <span className="text-xs text-sky-300 font-medium flex items-center gap-1.5">
-                  <RefreshCw className="h-3.5 w-3.5 text-sky-400" />
+                  <RefreshCw className="h-3.5 w-3.5 text-sky-400 shrink-0" />
                   Compra recorrente / Assinatura mensal (Netflix, Spotify, Academia, etc.)
                 </span>
               </label>
-              {isRecurring && (
+              {isRecurring ? (
                 <p className="text-[10px] text-sky-300/80 pl-6">
                   Identificada como assinatura recorrente no histórico e relatórios mensais.
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-500 pl-6">
+                  Compra única pontual (padrão).
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Opção de Receita Recorrente (para receitas) */}
+          {type === 'income' && (
+            <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500/50 h-4 w-4 cursor-pointer"
+                />
+                <span className="text-xs text-emerald-300 font-medium flex items-center gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  Receita recorrente mensal (Salário, Pró-labore, Renda fixa, etc.)
+                </span>
+              </label>
+              {isRecurring ? (
+                <p className="text-[10px] text-emerald-300/80 pl-6">
+                  Identificada como receita recorrente mensal no histórico e relatórios.
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-500 pl-6">
+                  Receita única pontual (padrão).
                 </p>
               )}
             </div>

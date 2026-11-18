@@ -38,7 +38,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { Transaction, Category } from '@/types/finance'
 import { deleteTransactionAction } from '@/actions/finance'
 
@@ -290,9 +290,16 @@ export function TransactionList({
                         )}
 
                         {tx.is_recurring && (
-                          <span className="inline-flex items-center gap-1 text-[10px] bg-sky-500/10 text-sky-300 border border-sky-500/20 px-1.5 py-0.5 rounded-md font-medium shrink-0">
-                            <RefreshCw className="h-2.5 w-2.5 text-sky-400" />
-                            Assinatura
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 text-[10px] border px-1.5 py-0.5 rounded-md font-medium shrink-0',
+                              tx.type === 'income'
+                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                                : 'bg-sky-500/10 text-sky-300 border-sky-500/20'
+                            )}
+                          >
+                            <RefreshCw className="h-2.5 w-2.5" />
+                            {tx.type === 'income' ? 'Recorrente' : 'Assinatura'}
                           </span>
                         )}
 
