@@ -71,6 +71,8 @@ export function CSVConciliatorModal({
       amount: number
       isThirdParty: boolean
       debtorName: string
+      installmentCurrent?: number
+      installmentTotal?: number
     }>
   >([])
 
@@ -104,6 +106,8 @@ export function CSVConciliatorModal({
           amount: item.raw.amount,
           isThirdParty: false,
           debtorName: '',
+          installmentCurrent: item.installmentCurrent,
+          installmentTotal: item.installmentTotal,
         }))
 
       setPendingItems(pendings)
@@ -171,6 +175,8 @@ export function CSVConciliatorModal({
         is_third_party: item.isThirdParty,
         debtor_name: item.isThirdParty && item.debtorName ? item.debtorName.trim() : null,
         billing_cycle: currentCycleId,
+        installment_current: item.installmentCurrent || 1,
+        installment_total: item.installmentTotal || 1,
       }))
 
       await batchCreateTransactionsAction(payload)
@@ -547,32 +553,32 @@ export function CSVConciliatorModal({
                       .map((item, idx) => (
                         <div
                           key={`conciliated-${idx}`}
-                          className="p-3 rounded-xl bg-[#0e1624] border border-emerald-500/20 text-xs flex items-center justify-between"
+                          className="p-3 rounded-xl bg-[#0e1624] border border-emerald-500/20 text-xs flex items-center justify-between gap-3"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
                               <Check className="h-4 w-4" />
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-white">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-white truncate max-w-[200px] sm:max-w-[320px]">
                                   {item.matchedTransaction?.description || item.raw.title}
                                 </span>
-                                <Badge className="bg-emerald-500/10 text-emerald-300 border-emerald-500/30 text-[10px]">
+                                <Badge className="bg-emerald-500/10 text-emerald-300 border-emerald-500/30 text-[10px] shrink-0">
                                   Conciliado por Valor de Referência
                                 </Badge>
                               </div>
-                              <span className="text-[11px] text-slate-400 block mt-0.5">
+                              <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
                                 Estabelecimento no CSV: <strong className="text-slate-300">{item.raw.title}</strong> ({formatDate(item.raw.date)}) • Categoria: {item.suggestedCategory}
                               </span>
                             </div>
                           </div>
 
-                          <div className="text-right">
+                          <div className="text-right shrink-0">
                             <span className="font-bold text-white font-mono text-sm block">
                               {formatCurrency(item.raw.amount)}
                             </span>
-                            <span className="text-[10px] text-emerald-400">
+                            <span className="text-[10px] text-emerald-400 block">
                               Sem duplicação ✅
                             </span>
                           </div>

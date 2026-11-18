@@ -699,6 +699,8 @@ export async function batchCreateTransactionsAction(
     debtor_name?: string | null
     third_party_amount?: number | null
     billing_cycle?: string
+    installment_current?: number
+    installment_total?: number
   }[]
 ) {
   const supabase = await createClient()
@@ -712,6 +714,9 @@ export async function batchCreateTransactionsAction(
         : item.is_third_party
         ? item.amount
         : null
+
+    const instCurrent = item.installment_current && item.installment_current >= 1 ? item.installment_current : 1
+    const instTotal = item.installment_total && item.installment_total >= 1 ? item.installment_total : 1
 
     const { data: tx, error } = await supabase
       .from('transactions')
@@ -727,8 +732,8 @@ export async function batchCreateTransactionsAction(
         debtor_name: item.is_third_party && item.debtor_name ? item.debtor_name.trim() : null,
         third_party_amount: thirdPartyAmount,
         billing_cycle: cycle,
-        installment_current: 1,
-        installment_total: 1,
+        installment_current: instCurrent,
+        installment_total: instTotal,
       })
       .select()
       .single()
@@ -744,8 +749,8 @@ export async function batchCreateTransactionsAction(
         debtor_name: item.debtor_name.trim(),
         description: item.description.trim(),
         amount: thirdPartyAmount || item.amount,
-        installment_current: 1,
-        installment_total: 1,
+        installment_current: instCurrent,
+        installment_total: instTotal,
         status: 'pending',
         billing_cycle: cycle,
         transaction_id: tx?.id || null,
