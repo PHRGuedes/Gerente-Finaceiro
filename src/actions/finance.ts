@@ -6,6 +6,58 @@ import { getCycleForDate, projectInstallmentCycles } from '@/lib/billing'
 import { PaymentMethod, TransactionType } from '@/types/database.types'
 
 /**
+ * Obtém o usuário atualmente autenticado ou lança um erro amigável
+ */
+async function getAuthenticatedUser(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error || !user) {
+    throw new Error('Acesso não autorizado. Por favor, realize o login.')
+  }
+
+  return user
+}
+
+/**
+ * Ajusta o saldo da conta corrente ou dinheiro do usuário de forma segura e atômica.
+ * Se o registro de saldo ainda não existir para o novo usuário, ele é provisionado automaticamente.
+ */
+async function adjustAccountBalance(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  accountType: 'checking' | 'cash',
+  delta: number
+) {
+  const { data: balanceData } = await supabase
+    .from('account_balances')
+    .select('id, current_balance')
+    .eq('user_id', userId)
+    .eq('account_type', accountType)
+    .limit(1)
+    .maybeSingle()
+
+  if (balanceData) {
+    const newBalance = Number(balanceData.current_balance) + delta
+    await supabase
+      .from('account_balances')
+      .update({ current_balance: newBalance })
+      .eq('id', balanceData.id)
+      .eq('user_id', userId)
+  } else {
+    await supabase.from('account_balances').insert({
+      user_id: userId,
+      account_name: accountType === 'checking' ? 'Conta Corrente / Pix' : 'Dinheiro em Espécie',
+      account_type: accountType,
+      initial_balance: 0.0,
+      current_balance: delta,
+    })
+  }
+}
+
+/**
  * Cria transação(ões) respeitando o Motor de Parcelamentos:
  * Se installment_total > 1, registra a parcela atual no ciclo vigente e
  * projeta e cria automaticamente todas as parcelas futuras nos próximos ciclos de fatura.
@@ -24,11 +76,18 @@ export async function createTransactionAction(formData: {
   installment_total?: number
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   const is_third_party = Boolean(formData.is_third_party)
   const debtor_name = is_third_party && formData.debtor_name ? formData.debtor_name.trim() : null
-  const installment_current = formData.installment_current && formData.installment_current >= 1 ? formData.installment_current : 1
-  const installment_total = formData.installment_total && formData.installment_total >= 1 ? formData.installment_total : 1
+  const installment_current =
+    formData.installment_current && formData.installment_current >= 1
+      ? formData.installment_current
+      : 1
+  const installment_total =
+    formData.installment_total && formData.installment_total >= 1
+      ? formData.installment_total
+      : 1
   const base_cycle = getCycleForDate(formData.date)
 
   // 1. Projeção das parcelas (da parcela atual até a última)
@@ -41,7 +100,7 @@ export async function createTransactionAction(formData: {
 
   let firstTxId: string | null = null
 
-  // 2. Inserir cada parcela no ciclo correspondente
+  // 2. Inserir cada parcela no ciclo correspondente vinculando ao user.id
   for (const proj of projections) {
     const isFirst = proj.installmentCurrent === installment_current
 
@@ -54,6 +113,7 @@ export async function createTransactionAction(formData: {
     const { data: tx, error: txError } = await supabase
       .from('transactions')
       .insert({
+        user_id: user.id,
         type: formData.type,
         description: descWithInstallment,
         amount: formData.amount,
@@ -71,7 +131,9 @@ export async function createTransactionAction(formData: {
 
     if (txError) {
       console.error('Erro ao inserir transação da parcela:', txError)
-      throw new Error(`Falha ao registrar parcela ${proj.installmentCurrent}/${proj.installmentTotal}: ${txError.message}`)
+      throw new Error(
+        `Falha ao registrar parcela ${proj.installmentCurrent}/${proj.installmentTotal}: ${txError.message}`
+      )
     }
 
     if (isFirst) {
@@ -81,6 +143,7 @@ export async function createTransactionAction(formData: {
     // Se for Notinha, cria também nos Recebíveis para cada ciclo projetado
     if (is_third_party && debtor_name) {
       await supabase.from('receivables').insert({
+        user_id: user.id,
         debtor_name,
         description: descWithInstallment,
         amount: formData.amount,
@@ -96,23 +159,8 @@ export async function createTransactionAction(formData: {
   // 3. Regra: Se for Pix ou Dinheiro, afeta o Saldo Principal apenas na parcela vigente!
   if (formData.payment_method === 'pix' || formData.payment_method === 'cash') {
     const accountType = formData.payment_method === 'pix' ? 'checking' : 'cash'
-
-    const { data: balanceData } = await supabase
-      .from('account_balances')
-      .select('id, current_balance')
-      .eq('account_type', accountType)
-      .limit(1)
-      .maybeSingle()
-
-    if (balanceData) {
-      const delta = formData.type === 'income' ? formData.amount : -formData.amount
-      const newBalance = Number(balanceData.current_balance) + delta
-
-      await supabase
-        .from('account_balances')
-        .update({ current_balance: newBalance })
-        .eq('id', balanceData.id)
-    }
+    const delta = formData.type === 'income' ? formData.amount : -formData.amount
+    await adjustAccountBalance(supabase, user.id, accountType, delta)
   }
 
   revalidatePath('/')
@@ -131,9 +179,16 @@ export async function createReceivableAction(formData: {
   billing_cycle?: string
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
-  const current = formData.installment_current && formData.installment_current >= 1 ? formData.installment_current : 1
-  const total = formData.installment_total && formData.installment_total >= 1 ? formData.installment_total : 1
+  const current =
+    formData.installment_current && formData.installment_current >= 1
+      ? formData.installment_current
+      : 1
+  const total =
+    formData.installment_total && formData.installment_total >= 1
+      ? formData.installment_total
+      : 1
   const today = new Date().toISOString().split('T')[0]
   const base_cycle = formData.billing_cycle || getCycleForDate(today)
 
@@ -146,6 +201,7 @@ export async function createReceivableAction(formData: {
         : formData.description.trim()
 
     await supabase.from('receivables').insert({
+      user_id: user.id,
       debtor_name: formData.debtor_name.trim(),
       description: desc,
       amount: formData.amount,
@@ -174,6 +230,7 @@ export async function markReceivablePaidAction(params: {
   installmentInfo?: string // ex: "2/10"
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
   const today = new Date().toISOString().split('T')[0]
   const creditToBalance = params.creditToBalance !== false // padrão é true
 
@@ -182,6 +239,7 @@ export async function markReceivablePaidAction(params: {
     .from('receivables')
     .update({ status: 'paid' })
     .eq('id', params.receivableId)
+    .eq('user_id', user.id)
 
   if (recError) {
     throw new Error(`Erro ao atualizar notinha: ${recError.message}`)
@@ -195,6 +253,7 @@ export async function markReceivablePaidAction(params: {
 
     // Lançamento de Receita Pix
     await supabase.from('transactions').insert({
+      user_id: user.id,
       type: 'income',
       description: desc,
       amount: params.amount,
@@ -205,20 +264,7 @@ export async function markReceivablePaidAction(params: {
     })
 
     // Somar diretamente ao Saldo Principal (Conta Corrente)
-    const { data: balanceData } = await supabase
-      .from('account_balances')
-      .select('id, current_balance')
-      .eq('account_type', 'checking')
-      .limit(1)
-      .maybeSingle()
-
-    if (balanceData) {
-      const newBalance = Number(balanceData.current_balance) + params.amount
-      await supabase
-        .from('account_balances')
-        .update({ current_balance: newBalance })
-        .eq('id', balanceData.id)
-    }
+    await adjustAccountBalance(supabase, user.id, 'checking', params.amount)
   }
 
   revalidatePath('/')
@@ -234,9 +280,11 @@ export async function payInvoiceAction(params: {
   description?: string
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
   const today = new Date().toISOString().split('T')[0]
 
   const { error: txError } = await supabase.from('transactions').insert({
+    user_id: user.id,
     type: 'expense',
     description: params.description || `Pagamento Fatura Crédito (${params.cycleId})`,
     amount: params.amount,
@@ -251,20 +299,8 @@ export async function payInvoiceAction(params: {
     throw new Error(`Erro ao registrar pagamento da fatura: ${txError.message}`)
   }
 
-  const { data: balanceData } = await supabase
-    .from('account_balances')
-    .select('id, current_balance')
-    .eq('account_type', 'checking')
-    .limit(1)
-    .maybeSingle()
-
-  if (balanceData) {
-    const newBalance = Number(balanceData.current_balance) - params.amount
-    await supabase
-      .from('account_balances')
-      .update({ current_balance: newBalance })
-      .eq('id', balanceData.id)
-  }
+  // Debitar do Saldo Principal (Conta Corrente)
+  await adjustAccountBalance(supabase, user.id, 'checking', -params.amount)
 
   revalidatePath('/')
   return { success: true }
@@ -279,12 +315,14 @@ export async function payInformalDebtAction(params: {
   creditorName: string
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
   const today = new Date().toISOString().split('T')[0]
 
   const { data: debt } = await supabase
     .from('informal_debts')
     .select('paid_amount, total_amount')
     .eq('id', params.debtId)
+    .eq('user_id', user.id)
     .single()
 
   if (!debt) throw new Error('Dívida não encontrada')
@@ -295,8 +333,10 @@ export async function payInformalDebtAction(params: {
     .from('informal_debts')
     .update({ paid_amount: newPaidAmount })
     .eq('id', params.debtId)
+    .eq('user_id', user.id)
 
   await supabase.from('transactions').insert({
+    user_id: user.id,
     type: 'expense',
     description: `Pagamento Empréstimo - ${params.creditorName}`,
     amount: params.amount,
@@ -306,20 +346,8 @@ export async function payInformalDebtAction(params: {
     is_third_party: false,
   })
 
-  const { data: balanceData } = await supabase
-    .from('account_balances')
-    .select('id, current_balance')
-    .eq('account_type', 'checking')
-    .limit(1)
-    .maybeSingle()
-
-  if (balanceData) {
-    const newBalance = Number(balanceData.current_balance) - params.amount
-    await supabase
-      .from('account_balances')
-      .update({ current_balance: newBalance })
-      .eq('id', balanceData.id)
-  }
+  // Debitar do Saldo Principal (Conta Corrente)
+  await adjustAccountBalance(supabase, user.id, 'checking', -params.amount)
 
   revalidatePath('/')
   return { success: true }
@@ -330,40 +358,36 @@ export async function payInformalDebtAction(params: {
  */
 export async function deleteTransactionAction(txId: string) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   const { data: tx } = await supabase
     .from('transactions')
     .select('*')
     .eq('id', txId)
+    .eq('user_id', user.id)
     .single()
 
   if (!tx) return { success: false }
 
   if (tx.payment_method === 'pix' || tx.payment_method === 'cash') {
     const accountType = tx.payment_method === 'pix' ? 'checking' : 'cash'
-    const { data: balanceData } = await supabase
-      .from('account_balances')
-      .select('id, current_balance')
-      .eq('account_type', accountType)
-      .limit(1)
-      .maybeSingle()
-
-    if (balanceData) {
-      const revertDelta = tx.type === 'expense' ? Number(tx.amount) : -Number(tx.amount)
-      const newBalance = Number(balanceData.current_balance) + revertDelta
-
-      await supabase
-        .from('account_balances')
-        .update({ current_balance: newBalance })
-        .eq('id', balanceData.id)
-    }
+    const revertDelta = tx.type === 'expense' ? Number(tx.amount) : -Number(tx.amount)
+    await adjustAccountBalance(supabase, user.id, accountType, revertDelta)
   }
 
   // Deletar recebível vinculado se houver
-  await supabase.from('receivables').delete().eq('transaction_id', txId)
+  await supabase
+    .from('receivables')
+    .delete()
+    .eq('transaction_id', txId)
+    .eq('user_id', user.id)
 
   // Deletar transação
-  await supabase.from('transactions').delete().eq('id', txId)
+  await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', txId)
+    .eq('user_id', user.id)
 
   revalidatePath('/')
   return { success: true }
@@ -374,13 +398,20 @@ export async function deleteTransactionAction(txId: string) {
  */
 export async function deleteReceivableAction(receivableId: string) {
   const supabase = await createClient()
-  await supabase.from('receivables').delete().eq('id', receivableId)
+  const user = await getAuthenticatedUser(supabase)
+
+  await supabase
+    .from('receivables')
+    .delete()
+    .eq('id', receivableId)
+    .eq('user_id', user.id)
+
   revalidatePath('/')
   return { success: true }
 }
 
 /**
- * Sessão de Poker
+ * Sessão de Poker Clássica (para histórico e movimentação de conta geral)
  */
 export async function createPokerSessionAction(params: {
   buyIn: number
@@ -391,11 +422,13 @@ export async function createPokerSessionAction(params: {
   descriptionCashOut?: string
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
   const billing_cycle = getCycleForDate(params.date)
 
-  const { data: buyInTx, error: err1 } = await supabase
+  const { error: err1 } = await supabase
     .from('transactions')
     .insert({
+      user_id: user.id,
       type: 'expense',
       description: params.descriptionBuyIn || 'Sessão Poker (Buy-in / Entrada)',
       amount: params.buyIn,
@@ -405,14 +438,13 @@ export async function createPokerSessionAction(params: {
       is_third_party: false,
       billing_cycle,
     })
-    .select()
-    .single()
 
   if (err1) throw new Error(`Erro ao registrar buy-in: ${err1.message}`)
 
-  const { data: cashOutTx, error: err2 } = await supabase
+  const { error: err2 } = await supabase
     .from('transactions')
     .insert({
+      user_id: user.id,
       type: 'income',
       description: params.descriptionCashOut || 'Sessão Poker (Cashout / Saída)',
       amount: params.cashOut,
@@ -422,35 +454,18 @@ export async function createPokerSessionAction(params: {
       is_third_party: false,
       billing_cycle,
     })
-    .select()
-    .single()
 
   if (err2) throw new Error(`Erro ao registrar cash-out: ${err2.message}`)
 
   if (params.paymentMethod === 'pix' || params.paymentMethod === 'cash') {
     const accountType = params.paymentMethod === 'pix' ? 'checking' : 'cash'
-    const { data: balanceData } = await supabase
-      .from('account_balances')
-      .select('id, current_balance')
-      .eq('account_type', accountType)
-      .limit(1)
-      .maybeSingle()
-
-    if (balanceData) {
-      const netProfit = params.cashOut - params.buyIn
-      const newBalance = Number(balanceData.current_balance) + netProfit
-
-      await supabase
-        .from('account_balances')
-        .update({ current_balance: newBalance })
-        .eq('id', balanceData.id)
-    }
+    const netProfit = params.cashOut - params.buyIn
+    await adjustAccountBalance(supabase, user.id, accountType, netProfit)
   }
 
   revalidatePath('/')
   return { success: true, netProfit: params.cashOut - params.buyIn }
 }
-
 
 /**
  * Cria ou atualiza um item de previsão orçamentária (Receita Prevista ou Despesa Fixa).
@@ -463,10 +478,12 @@ export async function createForecastItemAction(params: {
   category?: string
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   const { data, error } = await supabase
     .from('forecast_items')
     .insert({
+      user_id: user.id,
       type: params.type,
       description: params.description.trim(),
       amount: params.amount,
@@ -497,11 +514,13 @@ export async function updateForecastItemAction(
   }
 ) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   const { error } = await supabase
     .from('forecast_items')
     .update(params)
     .eq('id', id)
+    .eq('user_id', user.id)
 
   if (error) throw new Error(`Erro ao atualizar item de previsão: ${error.message}`)
 
@@ -514,11 +533,13 @@ export async function updateForecastItemAction(
  */
 export async function deleteForecastItemAction(id: string) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   const { error } = await supabase
     .from('forecast_items')
     .delete()
     .eq('id', id)
+    .eq('user_id', user.id)
 
   if (error) throw new Error(`Erro ao remover item de previsão: ${error.message}`)
 
@@ -527,7 +548,7 @@ export async function deleteForecastItemAction(id: string) {
 }
 
 /**
- * Cria uma nova dívida informal (ex: empréstimo com amigo ou parente).
+ * Cria uma nova dívida informal.
  */
 export async function createInformalDebtAction(params: {
   creditor_name: string
@@ -536,10 +557,12 @@ export async function createInformalDebtAction(params: {
   notes?: string
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   const { data, error } = await supabase
     .from('informal_debts')
     .insert({
+      user_id: user.id,
       creditor_name: params.creditor_name.trim(),
       total_amount: params.total_amount,
       paid_amount: params.paid_amount || 0,
@@ -559,11 +582,13 @@ export async function createInformalDebtAction(params: {
  */
 export async function deleteInformalDebtAction(id: string) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   const { error } = await supabase
     .from('informal_debts')
     .delete()
     .eq('id', id)
+    .eq('user_id', user.id)
 
   if (error) throw new Error(`Erro ao remover dívida: ${error.message}`)
 
@@ -571,22 +596,24 @@ export async function deleteInformalDebtAction(id: string) {
   return { success: true }
 }
 
-
 /**
  * Importação em lote de transações (usado pelo Conciliador de CSV do Nubank).
  */
-export async function batchCreateTransactionsAction(items: {
-  type: TransactionType
-  description: string
-  amount: number
-  date: string
-  payment_method: PaymentMethod
-  category: string
-  is_third_party: boolean
-  debtor_name?: string | null
-  billing_cycle?: string
-}[]) {
+export async function batchCreateTransactionsAction(
+  items: {
+    type: TransactionType
+    description: string
+    amount: number
+    date: string
+    payment_method: PaymentMethod
+    category: string
+    is_third_party: boolean
+    debtor_name?: string | null
+    billing_cycle?: string
+  }[]
+) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   for (const item of items) {
     const cycle = item.billing_cycle || getCycleForDate(item.date)
@@ -594,6 +621,7 @@ export async function batchCreateTransactionsAction(items: {
     const { data: tx, error } = await supabase
       .from('transactions')
       .insert({
+        user_id: user.id,
         type: item.type,
         description: item.description.trim(),
         amount: item.amount,
@@ -616,6 +644,7 @@ export async function batchCreateTransactionsAction(items: {
 
     if (item.is_third_party && item.debtor_name) {
       await supabase.from('receivables').insert({
+        user_id: user.id,
         debtor_name: item.debtor_name.trim(),
         description: item.description.trim(),
         amount: item.amount,
@@ -631,7 +660,6 @@ export async function batchCreateTransactionsAction(items: {
   revalidatePath('/')
   return { success: true, count: items.length }
 }
-
 
 /**
  * ==============================================================================
@@ -653,10 +681,12 @@ export async function createPokerEntryAction(params: {
   notes?: string
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   const { data, error } = await supabase
     .from('poker_entries')
     .insert({
+      user_id: user.id,
       date: params.date,
       description: params.description.trim(),
       game_type: params.game_type,
@@ -690,10 +720,12 @@ export async function createPokerTrackerSessionAction(params: {
   notes?: string
 }) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
   const inserts = []
 
   if (params.buy_in_amount > 0) {
     inserts.push({
+      user_id: user.id,
       date: params.date,
       description: `${params.description.trim()} (Buy-in)`,
       game_type: params.game_type,
@@ -706,6 +738,7 @@ export async function createPokerTrackerSessionAction(params: {
 
   if (params.cash_out_amount > 0) {
     inserts.push({
+      user_id: user.id,
       date: params.date,
       description: `${params.description.trim()} (Cashout/Prêmio)`,
       game_type: params.game_type,
@@ -736,11 +769,13 @@ export async function createPokerTrackerSessionAction(params: {
  */
 export async function deletePokerEntryAction(id: string) {
   const supabase = await createClient()
+  const user = await getAuthenticatedUser(supabase)
 
   const { error } = await supabase
     .from('poker_entries')
     .delete()
     .eq('id', id)
+    .eq('user_id', user.id)
 
   if (error) {
     console.error('Erro ao excluir lançamento de poker:', error)

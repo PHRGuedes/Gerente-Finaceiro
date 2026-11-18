@@ -29,7 +29,7 @@ interface HeaderStatsProps {
     ownExpense: number
     thirdPartyExpense: number
   }
-  fixedObligations: {
+  fixedObligations?: {
     total: number
     items: ForecastItem[]
   }
@@ -53,7 +53,6 @@ export function HeaderStats({
   checkingBalance,
   billingCycle,
   creditInvoice,
-  fixedObligations,
   informalDebts,
   receivables,
   onOpenPayInvoice,
@@ -66,7 +65,7 @@ export function HeaderStats({
   const isLowBalance = checkingBalance < 50.0
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. Saldo Atual em Conta (com alerta visual se < R$ 50,00) */}
       <Card
         className={`relative overflow-hidden transition-all duration-300 ${
@@ -192,39 +191,7 @@ export function HeaderStats({
         </CardContent>
       </Card>
 
-      {/* 3. Obrigações Fixas (ex: Conta Mãe) */}
-      <Card className="border-rose-500/20 bg-gradient-to-b from-[#180f1a] to-[#0c0910]">
-        <CardHeader className="p-4 pb-1 flex flex-row items-center justify-between">
-          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-            Obrigações Fixas
-          </span>
-          <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400">
-            <CalendarDays className="h-4 w-4" />
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-4 pt-1 space-y-2">
-          <div className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
-            {formatCurrency(fixedObligations.total)}
-          </div>
-
-          <div className="space-y-1 pt-1 border-t border-white/[0.06]">
-            {fixedObligations.items.slice(0, 2).map((item) => (
-              <div key={item.id} className="flex justify-between items-center text-[11px] text-slate-400">
-                <span className="truncate max-w-[120px]">{item.description}</span>
-                <span className="font-mono text-slate-300">{formatCurrency(Number(item.amount))}</span>
-              </div>
-            ))}
-            {fixedObligations.items.length > 2 && (
-              <span className="text-[10px] text-slate-500 block">
-                + {fixedObligations.items.length - 2} outras fixas
-              </span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 4. Dívidas */}
+      {/* 3. Dívidas */}
       <Card className="border-cyan-500/20 bg-gradient-to-b from-[#0e1620] to-[#090f17]">
         <CardHeader className="p-4 pb-1 flex flex-row items-center justify-between">
           <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">

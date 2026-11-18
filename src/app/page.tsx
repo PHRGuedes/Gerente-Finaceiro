@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentBillingCycle } from '@/lib/billing'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
@@ -13,24 +14,45 @@ import {
 
 export default async function DashboardPage() {
   const supabase = await createClient()
+
+  // 0. Verificar Usuário Autenticado
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+  }
+
   const billingCycle = getCurrentBillingCycle()
 
-  // 1. Buscar Saldo Principal da Conta Corrente (Pix/Conta)
+  // 1. Buscar Saldo Principal da Conta Corrente do Usuário
   const { data: balanceRows } = await supabase
     .from('account_balances')
     .select('*')
+    .eq('user_id', user.id)
     .eq('account_type', 'checking')
     .limit(1)
 
-  const checkingBalance =
-    balanceRows && balanceRows.length > 0
-      ? Number(balanceRows[0].current_balance)
-      : 0
+  let checkingBalance = 0
+  if (balanceRows && balanceRows.length > 0) {
+    checkingBalance = Number(balanceRows[0].current_balance)
+  } else {
+    // Auto-provisionamento de segurança para novos usuários
+    await supabase.from('account_balances').insert({
+      user_id: user.id,
+      account_name: 'Conta Corrente / Pix',
+      account_type: 'checking',
+      initial_balance: 0.0,
+      current_balance: 0.0,
+    })
+  }
 
-  // 2. Buscar Movimentações do Ciclo Atual
+  // 2. Buscar Movimentações do Ciclo Atual do Usuário
   const { data: txRows } = await supabase
     .from('transactions')
     .select('*')
+    .eq('user_id', user.id)
     .order('date', { ascending: false })
 
   const allTransactions = (txRows || []) as Transaction[]
@@ -55,10 +77,11 @@ export default async function DashboardPage() {
 
   const creditInvoiceTotal = ownExpense + thirdPartyExpense
 
-  // 3. Buscar Todos os Itens de Previsão Orçamentária (Fixas e Receitas)
+  // 3. Buscar Itens de Previsão Orçamentária do Usuário
   const { data: forecastRows } = await supabase
     .from('forecast_items')
     .select('*')
+    .eq('user_id', user.id)
     .order('amount', { ascending: false })
 
   const allForecastItems = (forecastRows || []) as ForecastItem[]
@@ -69,10 +92,11 @@ export default async function DashboardPage() {
   )
   const fixedTotal = fixedItems.reduce((acc, curr) => acc + Number(curr.amount), 0)
 
-  // 4. Buscar Dívidas Informais (ex: Saldo devedor com o Vô)
+  // 4. Buscar Dívidas do Usuário
   const { data: debtRows } = await supabase
     .from('informal_debts')
     .select('*')
+    .eq('user_id', user.id)
     .order('total_amount', { ascending: false })
 
   const debts = (debtRows || []) as InformalDebt[]
@@ -81,10 +105,11 @@ export default async function DashboardPage() {
     0
   )
 
-  // 5. Buscar Todas as Notinhas / Recebíveis (Atuais e Projetadas Futuras)
+  // 5. Buscar Notinhas / Recebíveis do Usuário
   const { data: recRows } = await supabase
     .from('receivables')
     .select('*')
+    .eq('user_id', user.id)
     .order('billing_cycle', { ascending: true })
 
   const allReceivables = (recRows || []) as Receivable[]
@@ -99,21 +124,29 @@ export default async function DashboardPage() {
     0
   )
 
-  // 6. Buscar Categorias
+  // 6. Buscar Categorias (Globais do sistema ou do próprio usuário)
   const { data: categoryRows } = await supabase
     .from('categories')
     .select('*')
+    .or(`user_id.is.null,user_id.eq.${user.id}`)
     .order('name', { ascending: true })
 
   const categories = (categoryRows || []) as Category[]
 
-  // 7. Buscar Lançamentos de Poker (Tracker e Bankroll Independente)
+  // 7. Buscar Lançamentos de Poker do Usuário (Tracker Independente)
   const { data: pokerRows } = await supabase
     .from('poker_entries')
     .select('*')
+    .eq('user_id', user.id)
     .order('date', { ascending: false })
 
   const pokerEntries = (pokerRows || []) as PokerEntry[]
+
+  const currentUser = {
+    id: user.id,
+    email: user.email || '',
+    fullName: (user.user_metadata?.full_name as string) || user.email?.split('@')[0] || 'Usuário',
+  }
 
   return (
     <DashboardShell
@@ -142,6 +175,7 @@ export default async function DashboardPage() {
         transactions: allTransactions,
         categories,
         pokerEntries,
+        currentUser,
       }}
     />
   )

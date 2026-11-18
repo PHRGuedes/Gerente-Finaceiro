@@ -16,10 +16,12 @@ import {
   HandCoins,
   CalendarDays,
   Spade,
+  LogOut,
+  User as UserIcon,
 } from 'lucide-react'
+import { signOutAction } from '@/actions/auth'
 import { Button } from '@/components/ui/button'
 import { HeaderStats } from '@/components/dashboard/header-stats'
-import { QuickEntryBar } from '@/components/dashboard/quick-entry-bar'
 import { TransactionList } from '@/components/dashboard/transaction-list'
 import { CategoryChart } from '@/components/dashboard/category-chart'
 import { ReceivablesSection } from '@/components/dashboard/receivables-section'
@@ -71,6 +73,11 @@ interface DashboardShellProps {
     transactions: Transaction[]
     categories: Category[]
     pokerEntries?: PokerEntry[]
+    currentUser?: {
+      id: string
+      email: string
+      fullName: string
+    }
   }
 }
 
@@ -95,6 +102,7 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
     transactions,
     categories,
     pokerEntries = [],
+    currentUser,
   } = initialData
 
   const pendingNotinhasCount = allReceivables.filter((r) => r.status === 'pending').length
@@ -207,6 +215,36 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
               <span className="hidden sm:inline">Novo Lançamento</span>
               <span className="sm:hidden">Novo</span>
             </Button>
+
+            {/* Usuário Conectado & Logout */}
+            {currentUser && (
+              <div className="flex items-center gap-1.5 pl-2 border-l border-white/10 shrink-0">
+                <div
+                  className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-bold text-xs flex items-center justify-center shrink-0 uppercase"
+                  title={currentUser.email}
+                >
+                  {currentUser.fullName.charAt(0) || currentUser.email.charAt(0)}
+                </div>
+                <div className="hidden xl:block text-left text-xs max-w-[120px] truncate leading-tight">
+                  <span className="font-semibold text-white truncate block">
+                    {currentUser.fullName}
+                  </span>
+                  <span className="text-[10px] text-slate-400 truncate block">
+                    {currentUser.email}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOutAction()
+                  }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                  title="Sair da Conta (Logout)"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -294,18 +332,14 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
           </div>
         </div>
 
-        {/* Lançamento Rápido Inteligente */}
-        <QuickEntryBar categories={categories} />
-
         {/* CONTEÚDO CONDICIONAL POR ABA */}
         {activeTab === 'overview' && (
           <>
-            {/* 1. Cards do Topo (Os 5 KPIs essenciais) */}
+            {/* 1. Cards do Topo (Os KPIs essenciais) */}
             <HeaderStats
               checkingBalance={checkingBalance}
               billingCycle={billingCycle}
               creditInvoice={creditInvoice}
-              fixedObligations={fixedObligations}
               informalDebts={informalDebts}
               receivables={receivables}
               onOpenPayInvoice={() => setIsPayInvoiceOpen(true)}

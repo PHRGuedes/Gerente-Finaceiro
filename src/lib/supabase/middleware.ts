@@ -42,7 +42,25 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Obtém o usuário atual (garante renovação do token de sessão)
-  await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const pathname = request.nextUrl.pathname
+
+  // Se não estiver autenticado e tentar acessar rotas internas, redireciona para /login
+  if (!user && pathname !== '/login' && !pathname.startsWith('/auth')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  // Se já estiver autenticado e tentar acessar a tela de login, redireciona para /
+  if (user && pathname === '/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    return NextResponse.redirect(url)
+  }
 
   return supabaseResponse
 }

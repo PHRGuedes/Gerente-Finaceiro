@@ -157,6 +157,32 @@ Gerente-Finaceiro/
 
 ---
 
+## 🚀 Etapa 7 - Sistema Multi-Usuário (Autenticação & Isolamento de Dados)
+
+1. **Autenticação Completa via Supabase Auth:**
+   - Tela de Login & Cadastro moderna em Dark Mode (`/login`).
+   - Abas para **"Entrar na Conta"** e **"Criar Nova Conta"** com validação de senha e formulário responsivo.
+   - **Auto-confirmação Instantânea:** Trigger Postgres no Supabase (`trigger_auto_confirm_user`) que confirma o e-mail no ato do cadastro, permitindo que novos usuários acessem o sistema imediatamente sem atrito de SMTP.
+   - Proteção de rotas via `middleware.ts`: Usuários não autenticados são redirecionados automaticamente para `/login`, e usuários logados que acessam `/login` são encaminhados para a Dashboard.
+
+2. **Isolamento de Dados Estrito (Multi-Tenant com RLS):**
+   - Cada usuário possui seus próprios lançamentos, recebíveis, dívidas, itens de previsão, saldo em conta corrente e histórico de poker.
+   - Consultas no Server Component e Server Actions filtradas estritamente por `user_id`.
+   - Políticas de **Row Level Security (RLS)** ativas no banco de dados garantem que nenhum usuário tenha acesso ou visibilidade aos dados de outro usuário.
+   - Avatar do usuário com iniciais, nome, e-mail e botão de logout instantâneo integrado no cabeçalho do Dashboard.
+
+---
+
+## ♠️ Tracker de Poker Independente (Bankroll & ROI)
+
+- Aba dedicada **Poker** no painel principal com rastreamento de bankroll individual e vitalício.
+- Não interfere no saldo principal da conta corrente nem na fatura de cartão de crédito.
+- Filtros por tipo de jogo (**Torneio** ou **Cash Game**) e período de datas.
+- Resumo automático de **Total de Buy-ins**, **Total de Cashouts**, **Lucro Líquido (ROI)** e status Positivo/Negativo.
+- Formulários para registro de sessão completa ou entrada/saída avulsa.
+
+---
+
 ## ⚡ Como Rodar o Banco no Supabase
 
 1. Acesse o painel do seu projeto no [Supabase](https://supabase.com).

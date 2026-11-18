@@ -94,23 +94,13 @@ export function ForecastSimulator({
   // Soma Total de Entradas Previstas
   const totalEntradasPrevistas = totalForecastIncomes + totalProjectedReceivables
 
-  // 3. Contas Fixas (forecast_items com type = 'fixed_expense')
-  const fixedExpenseItems = useMemo(() => {
-    return forecastItems.filter((item) => item.type === 'fixed_expense' && item.active)
-  }, [forecastItems])
-
-  const totalContasFixas = useMemo(() => {
-    return fixedExpenseItems.reduce((acc, curr) => acc + Number(curr.amount), 0)
-  }, [fixedExpenseItems])
-
   // 4. Fatura de Crédito no Ciclo
-  // Se for o ciclo atual, usa a fatura em formação; se for próximo ciclo, pega compras parceladas desse ciclo
   const totalFaturaCredito = creditInvoiceTotal
 
-  // Total de Saídas Previstas = Fatura em Formação + Contas Fixas
-  const totalSaidasPrevistas = totalFaturaCredito + totalContasFixas
+  // Total de Saídas Previstas = Fatura em Formação
+  const totalSaidasPrevistas = totalFaturaCredito
 
-  // 5. Total de Dívidas Informais Restantes (ex: Saldo com o Vô)
+  // 5. Total de Dívidas Restantes
   const totalDividasRestantes = useMemo(() => {
     return informalDebts.reduce(
       (acc, d) => acc + (Number(d.total_amount) - Number(d.paid_amount)),
@@ -118,8 +108,8 @@ export function ForecastSimulator({
     )
   }, [informalDebts])
 
-  // 6. CÁLCULO DA FÓRMULA SOLICITADA EM TEMPO REAL:
-  // Saldo Atual + Receitas Previstas - (Fatura + Contas Fixas) = Saldo Livre (Antes de quitar dívidas)
+  // 6. CÁLCULO DA FÓRMULA EM TEMPO REAL:
+  // Saldo Atual + Receitas Previstas - Fatura = Saldo Livre (Antes de quitar dívidas)
   const saldoLivreAntesDividas =
     checkingBalance + totalEntradasPrevistas - totalSaidasPrevistas
 
@@ -248,7 +238,7 @@ export function ForecastSimulator({
                 Saldo Livre Projetado (Antes de Dívidas)
               </span>
               <span className="text-[11px] text-slate-400">
-                Saldo Atual + Receitas - (Fatura + Fixas)
+                Saldo Atual + Receitas Previstas - Fatura
               </span>
             </div>
             <Badge variant={saldoLivreAntesDividas >= 0 ? 'success' : 'danger'}>
@@ -310,7 +300,7 @@ export function ForecastSimulator({
       </div>
 
       {/* Detalhamento Passo a Passo da Fórmula */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         {/* Saldo Atual */}
         <div className="p-3.5 rounded-xl bg-[#0e1624] border border-white/[0.06] space-y-1">
           <span className="text-slate-400 block text-[10px] uppercase font-bold">1. Saldo em Conta</span>
@@ -322,7 +312,7 @@ export function ForecastSimulator({
         <div className="p-3.5 rounded-xl bg-[#0e1624] border border-white/[0.06] space-y-1">
           <span className="text-slate-400 block text-[10px] uppercase font-bold">(+) Receitas Previstas</span>
           <div className="font-bold font-mono text-emerald-400 text-base">{formatCurrency(totalForecastIncomes)}</div>
-          <span className="text-[10px] text-slate-500">Salário, Poker, Pensão</span>
+          <span className="text-[10px] text-slate-500">Salário, Poker, etc.</span>
         </div>
 
         {/* (+) Notinhas a Receber */}
@@ -332,15 +322,8 @@ export function ForecastSimulator({
           <span className="text-[10px] text-slate-500">{projectedReceivables.length} parcela(s) a receber</span>
         </div>
 
-        {/* (-) Contas Fixas */}
-        <div className="p-3.5 rounded-xl bg-[#0e1624] border border-white/[0.06] space-y-1">
-          <span className="text-slate-400 block text-[10px] uppercase font-bold">(-) Contas Fixas</span>
-          <div className="font-bold font-mono text-rose-400 text-base">{formatCurrency(totalContasFixas)}</div>
-          <span className="text-[10px] text-slate-500">Conta Mãe, Net, etc.</span>
-        </div>
-
         {/* (-) Fatura Crédito */}
-        <div className="p-3.5 rounded-xl bg-[#0e1624] border border-white/[0.06] space-y-1 col-span-2 sm:col-span-1">
+        <div className="p-3.5 rounded-xl bg-[#0e1624] border border-white/[0.06] space-y-1">
           <span className="text-slate-400 block text-[10px] uppercase font-bold">(-) Fatura Cartão</span>
           <div className="font-bold font-mono text-violet-400 text-base">{formatCurrency(totalFaturaCredito)}</div>
           <span className="text-[10px] text-slate-500">Compras no crédito</span>
