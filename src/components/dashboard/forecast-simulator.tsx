@@ -100,7 +100,7 @@ export function ForecastSimulator({
   // Total de Saídas Previstas = Fatura em Formação
   const totalSaidasPrevistas = totalFaturaCredito
 
-  // 5. Total de Dívidas Restantes
+  // 5. Total de Dívidas Restantes (Geral e Próximos 30 Dias)
   const totalDividasRestantes = useMemo(() => {
     return informalDebts.reduce(
       (acc, d) => acc + (Number(d.total_amount) - Number(d.paid_amount)),
@@ -108,13 +108,43 @@ export function ForecastSimulator({
     )
   }, [informalDebts])
 
+  // Dívidas ativas que possuem data definida e vencem em até 30 dias (ou já vencidas)
+  const dividasProximos30Dias = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const maxDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+    maxDate.setHours(23, 59, 59, 999)
+
+    return informalDebts.filter((d) => {
+      const remaining = Number(d.total_amount) - Number(d.paid_amount)
+      if (remaining <= 0) return false
+      // Deve ter data definida (ignora dívidas sem data)
+      if (!d.due_date) return false
+
+      const [year, month, day] = d.due_date.split('-').map(Number)
+      if (!year || !month || !day) return false
+      const dueDate = new Date(year, month - 1, day)
+      dueDate.setHours(12, 0, 0, 0)
+
+      // Apenas dívidas com data até os próximos 30 dias (inclui vencidas)
+      return dueDate <= maxDate
+    })
+  }, [informalDebts])
+
+  const totalDividas30Dias = useMemo(() => {
+    return dividasProximos30Dias.reduce(
+      (acc, d) => acc + (Number(d.total_amount) - Number(d.paid_amount)),
+      0
+    )
+  }, [dividasProximos30Dias])
+
   // 6. CÁLCULO DA FÓRMULA EM TEMPO REAL:
   // Saldo Atual + Receitas Previstas - Fatura = Saldo Livre (Antes de quitar dívidas)
   const saldoLivreAntesDividas =
     checkingBalance + totalEntradasPrevistas - totalSaidasPrevistas
 
-  // Saldo Livre Projetado (Após quitar dívidas informais)
-  const saldoLivreAposDividas = saldoLivreAntesDividas - totalDividasRestantes
+  // Saldo Livre Projetado (Após abater apenas dívidas com data nos próximos 30 dias)
+  const saldoLivreAposDividas = saldoLivreAntesDividas - totalDividas30Dias
 
   // Ações de Receitas Previstas
   const handleToggleActive = async (item: ForecastItem) => {
@@ -260,7 +290,7 @@ export function ForecastSimulator({
           </CardContent>
         </Card>
 
-        {/* Card 2: Saldo Livre Projetado (Após Quitar Dívidas Informais) */}
+        {/* Card 2: Saldo Livre Projetado (Após Quitar Dívidas Informais com data em até 30 dias) */}
         <Card
           className={`relative overflow-hidden border shadow-xl ${
             saldoLivreAposDividas >= 0
@@ -274,7 +304,9 @@ export function ForecastSimulator({
                 Saldo Líquido Final (Após Quitar Dívidas)
               </span>
               <span className="text-[11px] text-slate-400">
-                Abatendo todas as dívidas ({formatCurrency(totalDividasRestantes)})
+                {totalDividas30Dias > 0
+                  ? `Abatendo dívidas com data em até 30 dias (${formatCurrency(totalDividas30Dias)})`
+                  : 'Nenhuma dívida com data para os próximos 30 dias'}
               </span>
             </div>
             <Badge variant={saldoLivreAposDividas >= 0 ? 'info' : 'warning'}>
@@ -292,9 +324,19 @@ export function ForecastSimulator({
             </div>
             <p className="text-xs text-slate-300">
               {saldoLivreAposDividas >= 0
-                ? 'Você pode quitar todas as dívidas e ainda manter saldo positivo!'
-                : 'Recomenda-se amortizar as dívidas em parcelas menores para não negativar.'}
+                ? totalDividas30Dias > 0
+                  ? 'Você pode quitar as dívidas com vencimento nos próximos 30 dias e ainda manter saldo positivo!'
+                  : 'Nenhuma dívida com data para os próximos 30 dias. Saldo 100% livre!'
+                : 'Recomenda-se amortizar as dívidas dos próximos 30 dias em parcelas menores para não negativar.'}
             </p>
+            {totalDividasRestantes > totalDividas30Dias && (
+              <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-slate-400">
+                <span>Dívidas sem data ou &gt; 30 dias:</span>
+                <span className="font-mono font-semibold text-slate-300">
+                  {formatCurrency(totalDividasRestantes - totalDividas30Dias)}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
