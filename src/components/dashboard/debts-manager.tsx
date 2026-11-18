@@ -9,6 +9,7 @@ import {
   AlertCircle,
   FileText,
   Trash2,
+  Edit2,
   QrCode,
   Calendar,
   Clock,
@@ -22,6 +23,7 @@ import { InformalDebt } from '@/types/finance'
 import {
   payInformalDebtAction,
   createInformalDebtAction,
+  updateInformalDebtAction,
   deleteInformalDebtAction,
 } from '@/actions/finance'
 
@@ -47,6 +49,17 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
   const [hasNoDueDate, setHasNoDueDate] = useState(true)
   const [loadingNew, setLoadingNew] = useState(false)
   const [newError, setNewError] = useState('')
+
+  // Modal de Edição de Dívida
+  const [editingDebt, setEditingDebt] = useState<InformalDebt | null>(null)
+  const [editCreditorName, setEditCreditorName] = useState('')
+  const [editTotalAmount, setEditTotalAmount] = useState('')
+  const [editPaidAmount, setEditPaidAmount] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [editDueDate, setEditDueDate] = useState('')
+  const [editHasNoDueDate, setEditHasNoDueDate] = useState(true)
+  const [loadingEdit, setLoadingEdit] = useState(false)
+  const [editError, setEditError] = useState('')
 
   const [feedback, setFeedback] = useState<string | null>(null)
 
@@ -157,6 +170,69 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
       setNewError(err instanceof Error ? err.message : 'Erro ao cadastrar dívida.')
     } finally {
       setLoadingNew(false)
+    }
+  }
+
+  const handleOpenEditDebt = (debt: InformalDebt) => {
+    setEditingDebt(debt)
+    setEditCreditorName(debt.creditor_name)
+    setEditTotalAmount(String(debt.total_amount).replace('.', ','))
+    setEditPaidAmount(String(debt.paid_amount || 0).replace('.', ','))
+    setEditNotes(debt.notes || '')
+    if (debt.due_date) {
+      setEditDueDate(debt.due_date)
+      setEditHasNoDueDate(false)
+    } else {
+      setEditDueDate('')
+      setEditHasNoDueDate(true)
+    }
+    setEditError('')
+  }
+
+  const handleUpdateDebt = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingDebt) return
+    setEditError('')
+
+    const parsedTotal = parseFloat(editTotalAmount.replace(',', '.'))
+    if (isNaN(parsedTotal) || parsedTotal <= 0) {
+      setEditError('Informe um valor total válido maior que zero.')
+      return
+    }
+
+    const parsedPaid = editPaidAmount ? parseFloat(editPaidAmount.replace(',', '.')) || 0 : 0
+    if (parsedPaid > parsedTotal) {
+      setEditError('O valor já pago não pode ser maior que o valor total da dívida.')
+      return
+    }
+
+    if (!editCreditorName.trim()) {
+      setEditError('Informe o nome da pessoa / credor.')
+      return
+    }
+
+    if (!editHasNoDueDate && !editDueDate) {
+      setEditError('Informe a data de vencimento/pagamento ou marque a opção "Sem data".')
+      return
+    }
+
+    setLoadingEdit(true)
+    try {
+      await updateInformalDebtAction(editingDebt.id, {
+        creditor_name: editCreditorName.trim(),
+        total_amount: parsedTotal,
+        paid_amount: parsedPaid,
+        notes: editNotes.trim() || null,
+        due_date: editHasNoDueDate ? null : (editDueDate || null),
+      })
+
+      setFeedback(`Dívida com ${editCreditorName} atualizada com sucesso!`)
+      setEditingDebt(null)
+      setTimeout(() => setFeedback(null), 5000)
+    } catch (err: unknown) {
+      setEditError(err instanceof Error ? err.message : 'Erro ao atualizar dívida.')
+    } finally {
+      setLoadingEdit(false)
     }
   }
 
@@ -362,13 +438,22 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
                         )}
                       </div>
 
-                      <button
-                        onClick={() => handleDeleteDebt(debt.id, debt.creditor_name)}
-                        className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer shrink-0"
-                        title="Excluir dívida"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          onClick={() => handleOpenEditDebt(debt)}
+                          className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all cursor-pointer shrink-0"
+                          title="Editar dívida"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDebt(debt.id, debt.creditor_name)}
+                          className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer shrink-0"
+                          title="Excluir dívida"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Os 3 Valores solicitados: Original, Abatido, Devedor Atual */}
@@ -681,6 +766,158 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
                   className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold"
                 >
                   {loadingNew ? 'Salvando...' : 'Cadastrar Dívida'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Editar Dívida */}
+      {editingDebt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-[#0e1422] border border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
+                  <Edit2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Editar Dívida</h3>
+                  <p className="text-xs text-slate-400">Atualize os dados e prazos</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingDebt(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateDebt} className="p-5 space-y-4">
+              {editError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-medium">
+                  {editError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Pessoa / Credor
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nome do credor..."
+                  value={editCreditorName}
+                  onChange={(e) => setEditCreditorName(e.target.value)}
+                  className="w-full bg-[#151c2e] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/60"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Valor Total (R$)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="0,00"
+                    value={editTotalAmount}
+                    onChange={(e) => handleAmountChange(e.target.value, setEditTotalAmount)}
+                    className="w-full bg-[#151c2e] border border-white/[0.08] rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500/60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Já Abatido (R$)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="0,00"
+                    value={editPaidAmount}
+                    onChange={(e) => handleAmountChange(e.target.value, setEditPaidAmount)}
+                    className="w-full bg-[#151c2e] border border-white/[0.08] rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500/60"
+                  />
+                </div>
+              </div>
+
+              {/* Data Prevista de Pagamento e Checkbox 'Sem data' */}
+              <div className="space-y-2 p-3 rounded-xl bg-black/25 border border-white/[0.06]">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                    <span>Data de Pagamento</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-400 hover:text-cyan-300 select-none">
+                    <input
+                      type="checkbox"
+                      checked={editHasNoDueDate}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setEditHasNoDueDate(checked)
+                        if (!checked && !editDueDate) {
+                          setEditDueDate(new Date().toISOString().split('T')[0])
+                        }
+                      }}
+                      className="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                    />
+                    <span>Sem data</span>
+                  </label>
+                </div>
+
+                {!editHasNoDueDate ? (
+                  <div className="space-y-1">
+                    <input
+                      type="date"
+                      required={!editHasNoDueDate}
+                      value={editDueDate}
+                      onChange={(e) => setEditDueDate(e.target.value)}
+                      className="w-full bg-[#151c2e] border border-cyan-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400 font-mono"
+                    />
+                    <p className="text-[10px] text-slate-400">
+                      Data combinada para quitação com o credor.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic">
+                    ⏳ Prazo indeterminado / a combinar.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Observações / Motivo (Opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Empréstimo conserto do carro, reforma..."
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full bg-[#151c2e] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/60"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-white/[0.08] flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingDebt(null)}
+                  disabled={loadingEdit}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={loadingEdit}
+                  className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold"
+                >
+                  {loadingEdit ? 'Salvando...' : 'Salvar Alterações'}
                 </Button>
               </div>
             </form>
