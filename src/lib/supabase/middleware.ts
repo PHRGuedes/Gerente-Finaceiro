@@ -66,15 +66,13 @@ export async function updateSession(request: NextRequest) {
 
     // Se não estiver autenticado e tentar acessar rotas internas, redireciona para /login
     if (!user && pathname !== '/login' && !pathname.startsWith('/auth')) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
+      const url = new URL('/login', request.url)
       return NextResponse.redirect(url)
     }
 
     // Se já estiver autenticado e tentar acessar a tela de login, redireciona para /
     if (user && pathname === '/login') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
+      const url = new URL('/', request.url)
       return NextResponse.redirect(url)
     }
 
