@@ -271,10 +271,6 @@ export function NewReceivableModal({
             </div>
           </div>
 
-          <p className="text-[11px] text-slate-400">
-            💡 O <strong>Motor de Parcelamento</strong> projetará automaticamente as parcelas futuras ({installmentCurrent}/{installmentTotal} até {installmentTotal}/{installmentTotal}) nos ciclos seguintes!
-          </p>
-
           <div className="pt-2 border-t border-white/[0.08] flex items-center justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={loading}>
               Cancelar

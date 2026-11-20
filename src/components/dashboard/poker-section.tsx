@@ -189,25 +189,6 @@ export function PokerSection({ entries }: PokerSectionProps) {
     }
   }, [filteredEntries])
 
-  // 3. Totais Vitalícios (Sem filtro de data, para saber a vida inteira)
-  const lifetimeStats = useMemo(() => {
-    let buyIn = 0
-    let cashOut = 0
-    entries.forEach((e) => {
-      const val = Number(e.amount)
-      if (e.entry_type === 'buy_in') buyIn += val
-      else cashOut += val
-    })
-    const net = cashOut - buyIn
-    return {
-      buyIn,
-      cashOut,
-      net,
-      isPositive: net >= 0,
-      totalEntries: entries.length,
-    }
-  }, [entries])
-
   // 4. Curva Cronológica de Evolução do Bankroll (Lucro Acumulado por Data)
   const bankrollCurve = useMemo(() => {
     if (filteredEntries.length === 0) return []
@@ -392,40 +373,6 @@ export function PokerSection({ entries }: PokerSectionProps) {
           <span>{successMsg}</span>
         </div>
       )}
-
-      {/* Regra Especial de Isolamento do Poker */}
-      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-[#101926] to-cyan-950/30 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-300">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-            <Spade className="h-4 w-4" />
-          </div>
-          <div>
-            <strong>Bankroll & Tracker de Poker Exclusivo:</strong> Todos os ganhos e despesas de jogatinas registrados aqui são independentes das suas contas pessoais e da fatura do cartão.
-          </div>
-        </div>
-
-        {/* Resumo Vitalício */}
-        <div className="flex items-center gap-2 bg-[#0c121e] px-3 py-1.5 rounded-xl border border-white/10 shrink-0">
-          <span className="text-[11px] text-slate-400">Resultado Vitalício:</span>
-          <span
-            className={`font-mono font-bold text-xs ${
-              lifetimeStats.isPositive ? 'text-emerald-400' : 'text-rose-400'
-            }`}
-          >
-            {lifetimeStats.isPositive ? '+' : ''}
-            {formatCurrency(lifetimeStats.net)}
-          </span>
-          <Badge
-            className={`text-[9px] py-0 px-1.5 ${
-              lifetimeStats.isPositive
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-            }`}
-          >
-            {lifetimeStats.isPositive ? 'Positivo 🏆' : 'Negativo ⚠️'}
-          </Badge>
-        </div>
-      </div>
 
       {/* CARDS DE KPIS DO POKER (PERÍODO SELECIONADO) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

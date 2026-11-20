@@ -167,12 +167,6 @@ export function PayInvoiceModal({
             </div>
           </div>
 
-          <p className="text-[11px] text-slate-400 bg-white/[0.02] p-2.5 rounded-lg border border-white/[0.05]">
-            💡 <strong>Regra Financeira:</strong> Ao confirmar, o valor de{' '}
-            <strong className="text-white font-mono">{formatCurrency(amountToPay)}</strong> será
-            debitado do seu <strong>Saldo Principal (Pix/Conta)</strong> e registrado como quitação de fatura.
-          </p>
-
           {/* Actions */}
           <div className="pt-3 border-t border-white/[0.08] flex items-center justify-end gap-2">
             <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>

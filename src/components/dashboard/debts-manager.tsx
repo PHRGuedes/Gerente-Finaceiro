@@ -591,12 +591,6 @@ export function DebtsManager({ debts, checkingBalance }: DebtsManagerProps) {
                 />
               </div>
 
-              <p className="text-[11px] text-slate-400">
-                💡 <strong>Regra:</strong> O valor será descontado diretamente do seu{' '}
-                <strong>Saldo Principal (Conta Corrente / Pix)</strong> e diminuirá o saldo com o{' '}
-                {selectedDebtToPay.creditor_name}.
-              </p>
-
               <div className="pt-2 border-t border-white/[0.08] flex items-center justify-end gap-2">
                 <Button
                   type="button"
