@@ -33,7 +33,6 @@ import {
   RefreshCw,
   LayoutList,
   FolderKanban,
-  PartyPopper,
   X,
   ChevronDown,
   ChevronUp,
@@ -100,7 +99,6 @@ export function TransactionList({
   const [sortBy, setSortBy] = useState<SortOption>('date_desc')
   const [searchTerm, setSearchTerm] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [isReliefDismissed, setIsReliefDismissed] = useState(false)
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
 
   // Estado para replicação de assinaturas
@@ -116,25 +114,6 @@ export function TransactionList({
     categories.forEach((cat) => map.set(cat.name, cat))
     return map
   }, [categories])
-
-  // Identificação de parcelas que chegam ao fim nesta fatura (Alívio do Próximo Mês)
-  const endingInstallments = useMemo(() => {
-    return transactions.filter(
-      (tx) =>
-        tx.payment_method === 'credit' &&
-        tx.installment_total > 1 &&
-        tx.installment_current === tx.installment_total
-    )
-  }, [transactions])
-
-  const totalEndingInstallmentsRelief = useMemo(() => {
-    return endingInstallments.reduce((acc, tx) => {
-      // Se for notinha parcial de terceiro, o alívio para o bolso próprio é só a parte própria
-      const tpAmount = tx.is_third_party && tx.third_party_amount ? Number(tx.third_party_amount) : 0
-      const ownAmount = Math.max(0, Number(tx.amount) - tpAmount)
-      return acc + ownAmount
-    }, 0)
-  }, [endingInstallments])
 
   // Contagens para os Filtros Rápidos
   const filterCounts = useMemo(() => {
@@ -542,45 +521,6 @@ export function TransactionList({
             >
               <X className="h-3.5 w-3.5" />
             </button>
-          </div>
-        )}
-
-        {/* Banner de Alívio de Parcelas do Próximo Mês (Design Limpo e Discreto) */}
-        {!isReliefDismissed && endingInstallments.length > 0 && (
-          <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#111726]/90 p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-start gap-2.5 min-w-0">
-                <div className="h-7 w-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
-                  <PartyPopper className="h-3.5 w-3.5" />
-                </div>
-                <div className="space-y-0.5 min-w-0">
-                  <div className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 flex-wrap">
-                    <span>Alívio Financeiro no Próximo Mês:</span>
-                    <span className="font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 font-bold">
-                      + {formatCurrency(totalEndingInstallmentsRelief)} livres
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    <strong className="text-slate-300">{endingInstallments.length} compra(s) parcelada(s)</strong> chegam ao fim nesta fatura:{' '}
-                    {endingInstallments.map((t, idx) => (
-                      <span key={t.id} className="text-slate-300 font-medium">
-                        {t.description.replace(/\s*\(\d+\/\d+\)$/, '')} ({t.installment_current}/{t.installment_total})
-                        {idx < endingInstallments.length - 1 ? ', ' : '.'}
-                      </span>
-                    ))}{' '}
-                    Esse valor deixará de pesar na fatura do mês seguinte.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsReliefDismissed(true)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.05] shrink-0"
-                title="Fechar aviso"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
           </div>
         )}
 
