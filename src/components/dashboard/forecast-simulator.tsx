@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import { ForecastItem, InformalDebt, Receivable } from '@/types/finance'
-import { BillingCycleInfo, addMonthsToCycle } from '@/lib/billing'
+import { BillingCycleInfo } from '@/lib/billing'
 import {
   createForecastItemAction,
   updateForecastItemAction,
@@ -50,8 +50,6 @@ export function ForecastSimulator({
   allReceivables,
   creditInvoiceTotal,
 }: ForecastSimulatorProps) {
-  // Ciclo selecionado para a projeção: Ciclo Vigente ou Próximo Ciclo (+1)
-  const [selectedCycleOffset, setSelectedCycleOffset] = useState<number>(1) // Padrão: Próximo Mês (+1)
   const [isNewIncomeOpen, setIsNewIncomeOpen] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [editAmount, setEditAmount] = useState('')
@@ -62,10 +60,8 @@ export function ForecastSimulator({
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
 
-  // Informações do ciclo projetado
-  const projectedCycle = useMemo(() => {
-    return addMonthsToCycle(billingCycle.cycleId, selectedCycleOffset)
-  }, [billingCycle.cycleId, selectedCycleOffset])
+  // Informações do ciclo projetado (fixo no Ciclo Atual)
+  const projectedCycle = billingCycle
 
   // 1. Receitas Previstas (forecast_items com type = 'income')
   const incomeItems = useMemo(() => {
@@ -204,47 +200,12 @@ export function ForecastSimulator({
         </div>
       )}
 
-      {/* Seletor de Ciclo da Projeção - Otimizado e sem banners pesados */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span className="text-xs text-slate-300">
-            Projeção calculada para: <strong className="text-emerald-300 font-mono">{projectedCycle.label}</strong>
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1 p-1 bg-[#111726]/90 rounded-xl border border-white/[0.08] self-start sm:self-auto text-xs overflow-x-auto scrollbar-none shrink-0">
-          <button
-            onClick={() => setSelectedCycleOffset(0)}
-            className={`h-8 px-3 rounded-lg font-medium transition-all whitespace-nowrap shrink-0 ${
-              selectedCycleOffset === 0
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Ciclo Atual
-          </button>
-          <button
-            onClick={() => setSelectedCycleOffset(1)}
-            className={`h-8 px-3 rounded-lg font-medium transition-all whitespace-nowrap shrink-0 ${
-              selectedCycleOffset === 1
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Próximo (+1 Mês)
-          </button>
-          <button
-            onClick={() => setSelectedCycleOffset(2)}
-            className={`h-8 px-3 rounded-lg font-medium transition-all whitespace-nowrap shrink-0 ${
-              selectedCycleOffset === 2
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Em 2 Meses (+2)
-          </button>
-        </div>
+      {/* Ciclo Atual da Projeção */}
+      <div className="flex items-center gap-2 pb-1">
+        <Calendar className="h-4 w-4 text-emerald-400 shrink-0" />
+        <span className="text-xs text-slate-300">
+          Projeção do Ciclo Atual: <strong className="text-emerald-300 font-mono">{projectedCycle.label}</strong>
+        </span>
       </div>
 
       {/* DESTAQUE PRINCIPAL: OS RESULTADOS DO CÁLCULO DA FÓRMULA */}
