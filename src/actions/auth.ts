@@ -74,3 +74,83 @@ export async function signOutAction() {
   revalidatePath('/', 'layout')
   redirect('/login')
 }
+
+export async function updateProfileNameAndAvatarAction(payload: {
+  fullName?: string
+  avatarUrl?: string | null
+}) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser()
+
+  if (userErr || !user) {
+    return { success: false, error: 'Usuário não autenticado.' }
+  }
+
+  const updateData: Record<string, unknown> = {
+    ...user.user_metadata,
+  }
+
+  if (payload.fullName !== undefined) {
+    const trimmed = payload.fullName.trim()
+    if (!trimmed) {
+      return { success: false, error: 'O nome não pode ficar em branco.' }
+    }
+    updateData.full_name = trimmed
+    updateData.name = trimmed
+  }
+
+  if (payload.avatarUrl !== undefined) {
+    updateData.avatar_url = payload.avatarUrl
+  }
+
+  const { data, error } = await supabase.auth.updateUser({
+    data: updateData,
+  })
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath('/', 'layout')
+  return {
+    success: true,
+    user: data.user,
+    message: 'Perfil atualizado com sucesso!',
+  }
+}
+
+export async function updatePasswordAction(payload: {
+  newPassword: string
+  confirmPassword: string
+}) {
+  if (!payload.newPassword || payload.newPassword.length < 6) {
+    return { success: false, error: 'A nova senha deve ter no mínimo 6 caracteres.' }
+  }
+
+  if (payload.newPassword !== payload.confirmPassword) {
+    return { success: false, error: 'A confirmação de senha não coincide com a nova senha.' }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser()
+
+  if (userErr || !user) {
+    return { success: false, error: 'Usuário não autenticado.' }
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: payload.newPassword,
+  })
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, message: 'Senha atualizada com sucesso!' }
+}

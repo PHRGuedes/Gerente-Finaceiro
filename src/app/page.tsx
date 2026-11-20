@@ -156,7 +156,12 @@ export default async function DashboardPage() {
   const currentUser = {
     id: user.id,
     email: user.email || '',
-    fullName: (user.user_metadata?.full_name as string) || user.email?.split('@')[0] || 'Usuário',
+    fullName:
+      (user.user_metadata?.full_name as string) ||
+      (user.user_metadata?.name as string) ||
+      user.email?.split('@')[0] ||
+      'Usuário',
+    avatarUrl: (user.user_metadata?.avatar_url as string) || null,
   }
 
   return (

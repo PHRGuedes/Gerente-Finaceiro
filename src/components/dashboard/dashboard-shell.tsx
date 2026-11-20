@@ -36,6 +36,7 @@ import { SettleReceivableModal } from '@/components/dashboard/settle-receivable-
 import { AmortizeDebtModal } from '@/components/dashboard/amortize-debt-modal'
 import { CSVConciliatorModal } from '@/components/dashboard/csv-conciliator-modal'
 import { ExportPdfModal } from '@/components/dashboard/export-pdf-modal'
+import { ProfileModal } from '@/components/dashboard/profile-modal'
 import { BillingCycleInfo, addMonthsToCycle, getCycleForDate } from '@/lib/billing'
 import {
   Transaction,
@@ -79,6 +80,7 @@ interface DashboardShellProps {
       id: string
       email: string
       fullName: string
+      avatarUrl?: string | null
     }
   }
 }
@@ -93,6 +95,7 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
   const [selectedDebt, setSelectedDebt] = useState<InformalDebt | null>(null)
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false)
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   const {
     checkingBalance,
@@ -310,20 +313,32 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
             {/* Usuário Conectado & Logout (alinhado rigorosamente a h-9) */}
             {currentUser && (
               <div className="flex items-center gap-1.5 sm:gap-2 pl-2 sm:pl-2.5 border-l border-white/10 shrink-0 h-9">
-                <div
-                  className="h-9 w-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center shrink-0 uppercase select-none shadow-sm"
-                  title={currentUser.email}
+                <button
+                  type="button"
+                  onClick={() => setIsProfileOpen(true)}
+                  className="flex items-center gap-1.5 sm:gap-2 hover:opacity-85 transition-opacity cursor-pointer group text-left"
+                  title="Configurar Perfil (Nome, Foto, Senha)"
                 >
-                  {currentUser.fullName.charAt(0) || currentUser.email.charAt(0)}
-                </div>
-                <div className="hidden xl:block text-left text-xs max-w-[120px] truncate leading-tight select-none">
-                  <span className="font-semibold text-white truncate block">
-                    {currentUser.fullName}
-                  </span>
-                  <span className="text-[10px] text-slate-400 truncate block">
-                    {currentUser.email}
-                  </span>
-                </div>
+                  <div className="h-9 w-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center shrink-0 uppercase select-none shadow-sm overflow-hidden group-hover:border-emerald-400/60 transition-colors">
+                    {currentUser.avatarUrl ? (
+                      <img
+                        src={currentUser.avatarUrl}
+                        alt={currentUser.fullName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      currentUser.fullName.charAt(0) || currentUser.email.charAt(0)
+                    )}
+                  </div>
+                  <div className="hidden xl:block text-left text-xs max-w-[120px] truncate leading-tight select-none">
+                    <span className="font-semibold text-white truncate block group-hover:text-emerald-300 transition-colors">
+                      {currentUser.fullName}
+                    </span>
+                    <span className="text-[10px] text-slate-400 truncate block">
+                      {currentUser.email}
+                    </span>
+                  </div>
+                </button>
                 <button
                   type="button"
                   onClick={async () => {
@@ -613,6 +628,12 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
           ownExpense: activeCreditInvoice.ownExpense,
           thirdParty: activeCreditInvoice.thirdPartyExpense,
         }}
+      />
+      {/* Modal de Personalização de Perfil */}
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        currentUser={currentUser}
       />
     </div>
   )
