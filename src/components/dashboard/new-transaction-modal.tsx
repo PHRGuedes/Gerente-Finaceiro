@@ -26,6 +26,7 @@ interface NewTransactionModalProps {
   editingTransaction?: Transaction | null
   currentCycleId?: string
   currentCycleLabel?: string
+  closingDay?: number
 }
 
 export function NewTransactionModal({
@@ -34,6 +35,7 @@ export function NewTransactionModal({
   categories,
   editingTransaction = null,
   currentCycleId,
+  closingDay = 4,
 }: NewTransactionModalProps) {
   const initialTotalVal = editingTransaction ? Number(editingTransaction.amount) : 0
   const initialTpVal =
@@ -79,7 +81,7 @@ export function NewTransactionModal({
   const defaultCycle =
     editingTransaction?.billing_cycle ||
     currentCycleId ||
-    getCycleForDate(date)
+    getCycleForDate(date, closingDay)
   const [selectedCycleId, setSelectedCycleId] = useState(defaultCycle)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -100,9 +102,9 @@ export function NewTransactionModal({
   }
 
   const cycleOptions = React.useMemo(() => {
-    const base = currentCycleId || getCycleForDate(date)
+    const base = currentCycleId || getCycleForDate(date, closingDay)
     return [-2, -1, 0, 1, 2, 3].map((offset) => {
-      const c = addMonthsToCycle(base, offset)
+      const c = addMonthsToCycle(base, offset, closingDay)
       let tag = ''
       if (offset === 0) tag = ' (Atual / Visualizada)'
       else if (offset === 1) tag = ' (Próxima Fatura)'

@@ -181,7 +181,7 @@ function HeaderStatsComponent({
               Fatura em Formação
             </span>
             <span className="text-[10px] text-slate-400 font-mono">
-              Fecha em {billingCycle.daysUntilClosing} dias (04/{billingCycle.cycleId.split('-')[1]})
+              Fecha em {billingCycle.daysUntilClosing} dias ({String(billingCycle.closingDay || 4).padStart(2, '0')}/{billingCycle.cycleId.split('-')[1]})
             </span>
           </div>
           <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400 shrink-0">

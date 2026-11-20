@@ -99,14 +99,16 @@ export async function createTransactionAction(formData: {
     formData.installment_total && formData.installment_total >= 1
       ? formData.installment_total
       : 1
-  const base_cycle = formData.billing_cycle || getCycleForDate(formData.date)
+  const closingDay = Number(user.user_metadata?.closing_day) || 4
+  const base_cycle = formData.billing_cycle || getCycleForDate(formData.date, closingDay)
 
   // 1. Projeção das parcelas (da parcela atual até a última)
   const projections = projectInstallmentCycles(
     formData.date,
     base_cycle,
     installment_current,
-    installment_total
+    installment_total,
+    closingDay
   )
 
   let firstTxId: string | null = null
@@ -216,10 +218,11 @@ export async function createReceivableAction(formData: {
     formData.installment_total && formData.installment_total >= 1
       ? formData.installment_total
       : 1
+  const closingDay = Number(user.user_metadata?.closing_day) || 4
   const today = new Date().toISOString().split('T')[0]
-  const base_cycle = formData.billing_cycle || getCycleForDate(today)
+  const base_cycle = formData.billing_cycle || getCycleForDate(today, closingDay)
 
-  const projections = projectInstallmentCycles(today, base_cycle, current, total)
+  const projections = projectInstallmentCycles(today, base_cycle, current, total, closingDay)
 
   for (const proj of projections) {
     const desc =
@@ -706,8 +709,10 @@ export async function batchCreateTransactionsAction(
   const supabase = await createClient()
   const user = await getAuthenticatedUser(supabase)
 
+  const closingDay = Number(user.user_metadata?.closing_day) || 4
+
   for (const item of items) {
-    const cycle = item.billing_cycle || getCycleForDate(item.date)
+    const cycle = item.billing_cycle || getCycleForDate(item.date, closingDay)
     const thirdPartyAmount =
       item.is_third_party && item.third_party_amount && item.third_party_amount > 0
         ? Number(item.third_party_amount)
@@ -1016,11 +1021,13 @@ export async function updateTransactionAction(
       ? formData.amount
       : null
 
+  const closingDay = Number(user.user_metadata?.closing_day) || 4
+
   // Se for parcela única (1/1), atualiza o ciclo conforme a nova data; se for parcelado, preserva o deslocamento ou recalcula se data mudou
   const newCycle =
     oldTx.installment_total === 1
-      ? getCycleForDate(formData.date)
-      : oldTx.billing_cycle || getCycleForDate(formData.date)
+      ? getCycleForDate(formData.date, closingDay)
+      : oldTx.billing_cycle || getCycleForDate(formData.date, closingDay)
 
   const updatePayload: Record<string, unknown> = {
     type: formData.type,
@@ -1225,16 +1232,17 @@ export async function replicateRecurringSubscriptionsAction(targetCycleId: strin
     }
   }
 
-  // 4. Calcular data correta no novo ciclo (respeitando fechamento no dia 04)
+  // 4. Calcular data correta no novo ciclo (respeitando fechamento configurado)
   const [targetYear, targetMonth] = targetCycleId.split('-').map(Number)
+  const closingDay = Number(user.user_metadata?.closing_day) || 4
 
   const insertPayloads = Array.from(toInsertMap.values()).map((orig) => {
-    const origDay = orig.date ? Number(orig.date.split('-')[2]) || 10 : 10
-    // Regra do ciclo: se origDay > 4, pertence ao mês anterior ao fechamento do ciclo
-    // Se origDay <= 4, pertence ao próprio mês de fechamento
+    const origDay = orig.date ? Number(orig.date.split('-')[2]) || closingDay : closingDay
+    // Regra do ciclo: se origDay > closingDay, pertence ao mês anterior ao fechamento do ciclo
+    // Se origDay <= closingDay, pertence ao próprio mês de fechamento
     let year = targetYear
     let month = targetMonth
-    if (origDay > 4) {
+    if (origDay > closingDay) {
       month -= 1
       if (month < 1) {
         month = 12

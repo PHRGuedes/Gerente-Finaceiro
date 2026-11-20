@@ -1,13 +1,14 @@
 /**
  * Utilitários para gestão do Ciclo de Faturamento de Cartão de Crédito e Motor de Parcelamentos.
- * Regra: Fechamento todo dia 04 de cada mês.
+ * Regra: Fechamento configurável por usuário (padrão: todo dia 04 de cada mês).
  */
 
 export interface BillingCycleInfo {
   cycleId: string // ex: '2026-12'
   label: string // ex: 'Fatura 04/12 (Dezembro / 2026)'
-  startDate: string // YYYY-MM-DD (dia 05 do mês anterior ao fechamento)
-  closingDate: string // YYYY-MM-DD (dia 04 do mês de fechamento)
+  closingDay: number // ex: 4
+  startDate: string // YYYY-MM-DD (dia seguinte ao fechamento do mês anterior)
+  closingDate: string // YYYY-MM-DD (dia de fechamento deste mês)
   daysUntilClosing: number
   isClosingSoon: boolean
 }
@@ -28,9 +29,13 @@ const MONTH_NAMES = [
 ]
 
 /**
- * Retorna as informações do ciclo de fatura atual baseado no fechamento no dia 04.
+ * Retorna as informações do ciclo de fatura atual baseado no fechamento configurado.
  */
-export function getCurrentBillingCycle(referenceDate: Date = new Date()): BillingCycleInfo {
+export function getCurrentBillingCycle(
+  referenceDate: Date = new Date(),
+  closingDay: number = 4
+): BillingCycleInfo {
+  const safeClosingDay = Math.max(1, Math.min(31, Math.round(closingDay || 4)))
   const year = referenceDate.getFullYear()
   const month = referenceDate.getMonth() // 0-indexed
   const day = referenceDate.getDate()
@@ -38,8 +43,8 @@ export function getCurrentBillingCycle(referenceDate: Date = new Date()): Billin
   let cycleYear = year
   let cycleMonth = month + 1 // 1-indexed
 
-  // Se o dia for maior que 4, a fatura atual em formação fechará no dia 04 do próximo mês.
-  if (day > 4) {
+  // Se o dia for maior que a data de fechamento, a fatura em formação fecha no próximo mês.
+  if (day > safeClosingDay) {
     cycleMonth += 1
     if (cycleMonth > 12) {
       cycleMonth = 1
@@ -47,14 +52,23 @@ export function getCurrentBillingCycle(referenceDate: Date = new Date()): Billin
     }
   }
 
-  return getCycleInfo(cycleYear, cycleMonth, referenceDate)
+  return getCycleInfo(cycleYear, cycleMonth, referenceDate, safeClosingDay)
 }
 
 /**
- * Constrói as informações completas de um ciclo dado ano e mês (1-12).
+ * Constrói as informações completas de um ciclo dado ano, mês (1-12) e dia de fechamento.
  */
-export function getCycleInfo(cycleYear: number, cycleMonth: number, referenceDate: Date = new Date()): BillingCycleInfo {
-  const closingDateObj = new Date(cycleYear, cycleMonth - 1, 4, 23, 59, 59)
+export function getCycleInfo(
+  cycleYear: number,
+  cycleMonth: number,
+  referenceDate: Date = new Date(),
+  closingDay: number = 4
+): BillingCycleInfo {
+  const safeClosingDay = Math.max(1, Math.min(31, Math.round(closingDay || 4)))
+  const maxDaysInCycleMonth = new Date(cycleYear, cycleMonth, 0).getDate()
+  const actualClosingDay = Math.min(safeClosingDay, maxDaysInCycleMonth)
+
+  const closingDateObj = new Date(cycleYear, cycleMonth - 1, actualClosingDay, 23, 59, 59)
 
   let startMonth = cycleMonth - 1
   let startYear = cycleYear
@@ -62,18 +76,21 @@ export function getCycleInfo(cycleYear: number, cycleMonth: number, referenceDat
     startMonth = 12
     startYear -= 1
   }
-  const startDateObj = new Date(startYear, startMonth - 1, 5, 0, 0, 0)
+  const maxDaysInStartMonth = new Date(startYear, startMonth, 0).getDate()
+  const actualStartDay = Math.min(safeClosingDay + 1, maxDaysInStartMonth)
+  const startDateObj = new Date(startYear, startMonth - 1, actualStartDay, 0, 0, 0)
 
   const diffTime = closingDateObj.getTime() - referenceDate.getTime()
   const daysUntilClosing = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
 
   const cycleId = `${cycleYear}-${String(cycleMonth).padStart(2, '0')}`
   const monthName = MONTH_NAMES[cycleMonth - 1] || String(cycleMonth)
-  const label = `Fatura 04/${String(cycleMonth).padStart(2, '0')} (${monthName} / ${cycleYear})`
+  const label = `Fatura ${String(safeClosingDay).padStart(2, '0')}/${String(cycleMonth).padStart(2, '0')} (${monthName} / ${cycleYear})`
 
   return {
     cycleId,
     label,
+    closingDay: safeClosingDay,
     startDate: startDateObj.toISOString().split('T')[0],
     closingDate: closingDateObj.toISOString().split('T')[0],
     daysUntilClosing,
@@ -84,8 +101,9 @@ export function getCycleInfo(cycleYear: number, cycleMonth: number, referenceDat
 /**
  * Determina a qual ciclo de fatura pertence uma determinada data (YYYY-MM-DD).
  */
-export function getCycleForDate(dateString: string): string {
-  if (!dateString) return getCurrentBillingCycle().cycleId
+export function getCycleForDate(dateString: string, closingDay: number = 4): string {
+  const safeClosingDay = Math.max(1, Math.min(31, Math.round(closingDay || 4)))
+  if (!dateString) return getCurrentBillingCycle(new Date(), safeClosingDay).cycleId
   const [yearStr, monthStr, dayStr] = dateString.split('-')
   const y = parseInt(yearStr, 10)
   const m = parseInt(monthStr, 10)
@@ -94,7 +112,7 @@ export function getCycleForDate(dateString: string): string {
   let cycleYear = y
   let cycleMonth = m
 
-  if (d > 4) {
+  if (d > safeClosingDay) {
     cycleMonth += 1
     if (cycleMonth > 12) {
       cycleMonth = 1
@@ -108,7 +126,11 @@ export function getCycleForDate(dateString: string): string {
 /**
  * Retorna o ciclo deslocado por N meses a partir de um cycleId (YYYY-MM).
  */
-export function addMonthsToCycle(cycleId: string, monthsToAdd: number): BillingCycleInfo {
+export function addMonthsToCycle(
+  cycleId: string,
+  monthsToAdd: number,
+  closingDay: number = 4
+): BillingCycleInfo {
   const [yearStr, monthStr] = cycleId.split('-')
   let y = parseInt(yearStr, 10)
   let m = parseInt(monthStr, 10) + monthsToAdd
@@ -122,7 +144,7 @@ export function addMonthsToCycle(cycleId: string, monthsToAdd: number): BillingC
     y -= 1
   }
 
-  return getCycleInfo(y, m)
+  return getCycleInfo(y, m, new Date(), closingDay)
 }
 
 /**
@@ -146,7 +168,8 @@ export function projectInstallmentCycles(
   baseDate: string,
   baseCycleId: string,
   startInstallment: number,
-  totalInstallments: number
+  totalInstallments: number,
+  closingDay: number = 4
 ): ProjectedInstallment[] {
   const result: ProjectedInstallment[] = []
 
@@ -157,7 +180,7 @@ export function projectInstallmentCycles(
 
   for (let inst = startInstallment; inst <= totalInstallments; inst++) {
     const monthOffset = inst - startInstallment
-    const cycle = addMonthsToCycle(baseCycleId, monthOffset)
+    const cycle = addMonthsToCycle(baseCycleId, monthOffset, closingDay)
 
     let targetMonth = originalMonth + monthOffset
     let targetYear = originalYear

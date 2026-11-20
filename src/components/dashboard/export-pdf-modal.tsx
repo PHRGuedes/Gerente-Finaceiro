@@ -100,7 +100,7 @@ export function ExportPdfModal({
           <div className="p-4 rounded-xl bg-[#121827] border border-white/[0.06] space-y-3">
             <div className="flex justify-between items-center text-xs text-slate-400">
               <span>Ciclo de Faturamento:</span>
-              <span className="font-mono text-white font-semibold">{cycle.cycleId} (Fecha dia 04)</span>
+              <span className="font-mono text-white font-semibold">{cycle.cycleId} (Fecha dia {String(cycle.closingDay || 4).padStart(2, '0')})</span>
             </div>
             <div className="flex justify-between items-center text-xs text-slate-400">
               <span>Lançamentos no Cartão:</span>

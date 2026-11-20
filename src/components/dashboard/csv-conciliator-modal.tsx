@@ -34,6 +34,7 @@ interface CSVConciliatorModalProps {
   categories: Category[]
   currentCycleId: string
   currentCycleLabel: string
+  closingDay?: number
 }
 
 const SAMPLE_NUBANK_CSV = `date,title,amount
@@ -52,6 +53,7 @@ export function CSVConciliatorModal({
   categories,
   currentCycleId,
   currentCycleLabel,
+  closingDay = 4,
 }: CSVConciliatorModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [csvContent, setCsvContent] = useState<string>('')

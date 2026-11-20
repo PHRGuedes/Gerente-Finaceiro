@@ -81,6 +81,7 @@ interface DashboardShellProps {
       email: string
       fullName: string
       avatarUrl?: string | null
+      closingDay?: number
     }
   }
 }
@@ -111,17 +112,19 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
 
   // Ciclo atualmente selecionado pelo usuário (0 = vigente, -1 = anterior, +1 = próximo...)
   const activeCycle = useMemo(() => {
+    const closing = currentUser?.closingDay || billingCycle.closingDay || 4
     if (cycleOffset === 0) return billingCycle
-    return addMonthsToCycle(billingCycle.cycleId, cycleOffset)
-  }, [billingCycle, cycleOffset])
+    return addMonthsToCycle(billingCycle.cycleId, cycleOffset, closing)
+  }, [billingCycle, cycleOffset, currentUser?.closingDay])
 
   // Transações pertencentes ao ciclo selecionado
   const activeCycleTransactions = useMemo(() => {
+    const closing = currentUser?.closingDay || billingCycle.closingDay || 4
     return transactions.filter((tx) => {
-      const txCycle = tx.billing_cycle || getCycleForDate(tx.date)
+      const txCycle = tx.billing_cycle || getCycleForDate(tx.date, closing)
       return txCycle === activeCycle.cycleId
     })
-  }, [transactions, activeCycle.cycleId])
+  }, [transactions, activeCycle.cycleId, currentUser?.closingDay, billingCycle.closingDay])
 
   // Cálculo dinâmico da Fatura de Crédito do ciclo selecionado
   const activeCreditInvoice = useMemo(() => {
@@ -270,7 +273,7 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
                 />
                 <span className="hidden 2xl:inline">{activeCycle.label}</span>
                 <span className="2xl:hidden">
-                  Fatura 04/{activeCycle.cycleId.split('-')[1]}/{activeCycle.cycleId.split('-')[0].slice(2)}
+                  Fatura {String(activeCycle.closingDay || 4).padStart(2, '0')}/{activeCycle.cycleId.split('-')[1]}/{activeCycle.cycleId.split('-')[0].slice(2)}
                 </span>
               </div>
 
@@ -376,7 +379,7 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
                 }`}
               />
               <span className="font-semibold text-white whitespace-nowrap">
-                Fatura 04/{activeCycle.cycleId.split('-')[1]}/{activeCycle.cycleId.split('-')[0].slice(2)}
+                Fatura {String(activeCycle.closingDay || 4).padStart(2, '0')}/{activeCycle.cycleId.split('-')[1]}/{activeCycle.cycleId.split('-')[0].slice(2)}
               </span>
             </div>
 
@@ -583,6 +586,7 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
         editingTransaction={editingTransaction}
         currentCycleId={activeCycle.cycleId}
         currentCycleLabel={activeCycle.label}
+        closingDay={activeCycle.closingDay}
       />
 
       <PayInvoiceModal
@@ -615,6 +619,7 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
         categories={categories}
         currentCycleId={activeCycle.cycleId}
         currentCycleLabel={activeCycle.label}
+        closingDay={activeCycle.closingDay}
       />
 
       {/* Etapa 6: Exportação de Fatura em PDF */}

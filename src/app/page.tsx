@@ -24,7 +24,8 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  const billingCycle = getCurrentBillingCycle()
+  const closingDay = Number(user.user_metadata?.closing_day) || 4
+  const billingCycle = getCurrentBillingCycle(new Date(), closingDay)
 
   // 1. Buscar Saldo Principal da Conta Corrente do Usuário
   const { data: balanceRows } = await supabase
@@ -162,6 +163,7 @@ export default async function DashboardPage() {
       user.email?.split('@')[0] ||
       'Usuário',
     avatarUrl: (user.user_metadata?.avatar_url as string) || null,
+    closingDay,
   }
 
   return (

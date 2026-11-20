@@ -78,6 +78,7 @@ export async function signOutAction() {
 export async function updateProfileNameAndAvatarAction(payload: {
   fullName?: string
   avatarUrl?: string | null
+  closingDay?: number
 }) {
   const supabase = await createClient()
   const {
@@ -106,6 +107,11 @@ export async function updateProfileNameAndAvatarAction(payload: {
     updateData.avatar_url = payload.avatarUrl
   }
 
+  if (payload.closingDay !== undefined) {
+    const safeDay = Math.max(1, Math.min(31, Math.round(Number(payload.closingDay) || 4)))
+    updateData.closing_day = safeDay
+  }
+
   const { data, error } = await supabase.auth.updateUser({
     data: updateData,
   })
@@ -118,7 +124,7 @@ export async function updateProfileNameAndAvatarAction(payload: {
   return {
     success: true,
     user: data.user,
-    message: 'Perfil atualizado com sucesso!',
+    message: 'Perfil e preferências atualizados com sucesso!',
   }
 }
 

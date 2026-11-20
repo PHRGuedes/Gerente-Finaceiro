@@ -15,6 +15,8 @@ import {
   ShieldCheck,
   Mail,
   Sparkles,
+  CreditCard,
+  Calendar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,6 +32,7 @@ interface ProfileModalProps {
     email: string
     fullName: string
     avatarUrl?: string | null
+    closingDay?: number
   }
 }
 
@@ -61,6 +64,7 @@ export function ProfileModal({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     currentUser?.avatarUrl || null
   )
+  const [closingDay, setClosingDay] = useState<number>(currentUser?.closingDay || 4)
   const [profileFeedback, setProfileFeedback] = useState<{
     type: 'success' | 'error'
     message: string
@@ -160,6 +164,7 @@ export function ProfileModal({
       const res = await updateProfileNameAndAvatarAction({
         fullName: fullName.trim(),
         avatarUrl: avatarUrl,
+        closingDay: closingDay,
       })
 
       if (res.success) {
@@ -417,6 +422,35 @@ export function ProfileModal({
                 value={currentUser?.email || ''}
                 className="w-full h-10 px-3 bg-[#090d15] border border-white/[0.05] rounded-xl text-xs text-slate-400 cursor-not-allowed select-none"
               />
+            </div>
+
+            {/* Campo: Dia de Fechamento da Fatura */}
+            <div className="space-y-1.5 pt-1 border-t border-white/[0.06]">
+              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <CreditCard className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Dia de Fechamento do Cartão</span>
+                </span>
+                <span className="text-[10px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                  Todo dia {String(closingDay).padStart(2, '0')}
+                </span>
+              </label>
+
+              <select
+                value={closingDay}
+                onChange={(e) => setClosingDay(Number(e.target.value))}
+                className="w-full h-10 px-3 bg-[#111726] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500/50 cursor-pointer"
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                  <option key={day} value={day}>
+                    Dia {String(day).padStart(2, '0')} {day === 4 ? '(Padrão)' : ''}
+                  </option>
+                ))}
+              </select>
+
+              <p className="text-[11px] text-slate-400 leading-tight">
+                Compras feitas após este dia entram na fatura do mês seguinte. Cada usuário tem seu próprio dia de corte!
+              </p>
             </div>
 
             {/* Botão de Salvar Perfil */}
