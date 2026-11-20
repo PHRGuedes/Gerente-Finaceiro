@@ -6,7 +6,6 @@ import {
   PlusCircle,
   CreditCard,
   QrCode,
-  Sparkles,
   ArrowRight,
   TrendingDown,
   TrendingUp,
@@ -354,53 +353,56 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
 
       {/* Main Content Area (pb-24 no mobile para dar espaço à Bottom Navigation Bar estilo app de banco) */}
       <main className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-8 space-y-4 sm:space-y-6 flex-1 w-full">
-        {/* Banner Informativo + Seletor de Ciclo Mobile */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-[#0e1626] to-teal-950/30 border border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs text-slate-300">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-emerald-400 shrink-0" />
-            <span>
-              <strong>Regra Financeira:</strong> Saldo em conta alterado via <strong>Pix/Dinheiro</strong>. Cartão de <strong>Crédito</strong> acumula na fatura com fechamento todo <strong>dia 04</strong>.
-            </span>
-          </div>
+        {/* Seletor de Ciclo Mobile (Compacto, elegante, sem banners invasivos) */}
+        <div className="md:hidden flex items-center justify-between gap-2 px-1">
+          <div className="inline-flex items-center gap-1 bg-[#111726]/90 border border-white/[0.08] px-2 h-9 rounded-xl font-mono text-xs shrink-0">
+            <button
+              type="button"
+              onClick={() => setCycleOffset((prev) => prev - 1)}
+              className="h-7 w-7 rounded-lg active:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+              title="Ciclo / Mês Anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
 
-          <div className="flex items-center justify-between md:justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/[0.06] shrink-0">
-            {/* Seletor de Ciclo visível no Celular */}
-            <div className="md:hidden inline-flex items-center gap-1 bg-[#111726] border border-white/10 px-1.5 h-8 rounded-xl font-mono text-[11px]">
-              <button
-                type="button"
-                onClick={() => setCycleOffset((prev) => prev - 1)}
-                className="h-6 w-6 rounded-lg active:bg-white/10 flex items-center justify-center text-slate-300"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </button>
-              <span className="px-1 text-white font-semibold whitespace-nowrap">
+            <div className="flex items-center gap-1.5 px-1.5">
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${
+                  cycleOffset === 0 ? 'bg-emerald-400' : 'bg-amber-400'
+                }`}
+              />
+              <span className="font-semibold text-white whitespace-nowrap">
                 Fatura 04/{activeCycle.cycleId.split('-')[1]}/{activeCycle.cycleId.split('-')[0].slice(2)}
               </span>
-              <button
-                type="button"
-                onClick={() => setCycleOffset((prev) => prev + 1)}
-                className="h-6 w-6 rounded-lg active:bg-white/10 flex items-center justify-center text-slate-300"
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-              {cycleOffset !== 0 && (
-                <button
-                  type="button"
-                  onClick={() => setCycleOffset(0)}
-                  className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-sans font-bold"
-                >
-                  Atual
-                </button>
-              )}
             </div>
 
-            <div className="text-[11px] text-slate-400 shrink-0 font-mono whitespace-nowrap">
-              {cycleOffset === 0
-                ? `Fechamento em ${activeCycle.daysUntilClosing} dias`
-                : cycleOffset < 0
-                ? 'Ciclo Anterior'
-                : 'Fatura Futura Projetada'}
-            </div>
+            <button
+              type="button"
+              onClick={() => setCycleOffset((prev) => prev + 1)}
+              className="h-7 w-7 rounded-lg active:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+              title="Próximo Ciclo / Mês"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+
+            {cycleOffset !== 0 && (
+              <button
+                type="button"
+                onClick={() => setCycleOffset(0)}
+                className="h-6 px-1.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-sans font-bold ml-0.5"
+                title="Voltar ao ciclo atual"
+              >
+                Atual
+              </button>
+            )}
+          </div>
+
+          <div className="text-[11px] text-slate-400 font-mono whitespace-nowrap shrink-0">
+            {cycleOffset === 0
+              ? `Fecha em ${activeCycle.daysUntilClosing} dias`
+              : cycleOffset < 0
+              ? 'Ciclo Anterior'
+              : 'Projetada'}
           </div>
         </div>
 

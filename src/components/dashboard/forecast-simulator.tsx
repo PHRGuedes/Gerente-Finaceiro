@@ -204,26 +204,21 @@ export function ForecastSimulator({
         </div>
       )}
 
-      {/* Seletor de Ciclo da Projeção */}
-      <div className="p-4 rounded-2xl bg-[#0d1424] border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Seletor de Ciclo da Projeção - Otimizado e sem banners pesados */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-emerald-400" />
-          <div>
-            <span className="text-xs font-bold text-white block">
-              Simulador Financeiro: Projeção do Fluxo de Caixa
-            </span>
-            <span className="text-[11px] text-slate-400">
-              Projeção calculada para: <strong className="text-emerald-300">{projectedCycle.label}</strong>
-            </span>
-          </div>
+          <Calendar className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span className="text-xs text-slate-300">
+            Projeção calculada para: <strong className="text-emerald-300 font-mono">{projectedCycle.label}</strong>
+          </span>
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 bg-[#121927] rounded-xl border border-white/[0.08] self-start sm:self-auto text-xs">
+        <div className="flex items-center gap-1 p-1 bg-[#111726]/90 rounded-xl border border-white/[0.08] self-start sm:self-auto text-xs overflow-x-auto scrollbar-none shrink-0">
           <button
             onClick={() => setSelectedCycleOffset(0)}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+            className={`h-8 px-3 rounded-lg font-medium transition-all whitespace-nowrap shrink-0 ${
               selectedCycleOffset === 0
-                ? 'bg-emerald-500 text-black font-bold'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -231,19 +226,19 @@ export function ForecastSimulator({
           </button>
           <button
             onClick={() => setSelectedCycleOffset(1)}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+            className={`h-8 px-3 rounded-lg font-medium transition-all whitespace-nowrap shrink-0 ${
               selectedCycleOffset === 1
-                ? 'bg-emerald-500 text-black font-bold'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Próximo Ciclo (+1 Mês)
+            Próximo (+1 Mês)
           </button>
           <button
             onClick={() => setSelectedCycleOffset(2)}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+            className={`h-8 px-3 rounded-lg font-medium transition-all whitespace-nowrap shrink-0 ${
               selectedCycleOffset === 2
-                ? 'bg-emerald-500 text-black font-bold'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >

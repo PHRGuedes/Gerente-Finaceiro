@@ -478,13 +478,13 @@ export function TransactionList({
                 variant="outline"
                 disabled={isPendingReplication}
                 onClick={handleReplicateSubscriptions}
-                className="text-xs h-8 border-sky-500/30 text-sky-300 hover:bg-sky-500/20 flex items-center gap-1.5 shrink-0"
+                className="text-xs h-8 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white flex items-center gap-1.5 shrink-0 transition-colors"
                 title="Lançar assinaturas recorrentes ativas para este ciclo"
               >
                 {isPendingReplication ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
                 ) : (
-                  <RefreshCw className="h-3.5 w-3.5 text-sky-400" />
+                  <RefreshCw className="h-3.5 w-3.5 text-slate-400" />
                 )}
                 <span>Lançar Assinaturas</span>
               </Button>
@@ -495,9 +495,9 @@ export function TransactionList({
                 size="sm"
                 variant="outline"
                 onClick={onOpenConciliateCsv}
-                className="text-xs h-8 border-violet-500/30 text-violet-300 hover:bg-violet-500/20 flex items-center gap-1 shrink-0"
+                className="text-xs h-8 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white flex items-center gap-1 shrink-0 transition-colors"
               >
-                <FileSpreadsheet className="h-3.5 w-3.5 text-violet-400" />
+                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />
                 <span className="hidden sm:inline">Conciliar CSV</span>
                 <span className="sm:hidden">CSV</span>
               </Button>
@@ -508,9 +508,9 @@ export function TransactionList({
                 size="sm"
                 variant="outline"
                 onClick={onOpenExportPdf}
-                className="text-xs h-8 border-violet-500/30 text-violet-300 hover:bg-violet-500/20 flex items-center gap-1 shrink-0"
+                className="text-xs h-8 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white flex items-center gap-1 shrink-0 transition-colors"
               >
-                <FileDown className="h-3.5 w-3.5 text-violet-400" />
+                <FileDown className="h-3.5 w-3.5 text-slate-400" />
                 <span className="hidden sm:inline">Exportar PDF</span>
                 <span className="sm:hidden">PDF</span>
               </Button>
@@ -545,30 +545,30 @@ export function TransactionList({
           </div>
         )}
 
-        {/* Banner de Alívio de Parcelas do Próximo Mês */}
+        {/* Banner de Alívio de Parcelas do Próximo Mês (Design Limpo e Discreto) */}
         {!isReliefDismissed && endingInstallments.length > 0 && (
-          <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-3 sm:p-3.5">
+          <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#111726]/90 p-3">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-start gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
-                  <PartyPopper className="h-4 w-4" />
+              <div className="flex items-start gap-2.5 min-w-0">
+                <div className="h-7 w-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                  <PartyPopper className="h-3.5 w-3.5" />
                 </div>
                 <div className="space-y-0.5 min-w-0">
-                  <div className="text-xs sm:text-sm font-bold text-amber-300 flex items-center gap-1.5 flex-wrap">
-                    <span>🎉 Alívio Financeiro no Próximo Mês:</span>
-                    <span className="font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                  <div className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 flex-wrap">
+                    <span>Alívio Financeiro no Próximo Mês:</span>
+                    <span className="font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 font-bold">
                       + {formatCurrency(totalEndingInstallmentsRelief)} livres
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    <strong className="text-amber-200">{endingInstallments.length} compra(s) parcelada(s)</strong> chegam ao fim nesta fatura:{' '}
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    <strong className="text-slate-300">{endingInstallments.length} compra(s) parcelada(s)</strong> chegam ao fim nesta fatura:{' '}
                     {endingInstallments.map((t, idx) => (
-                      <span key={t.id} className="text-white font-medium">
+                      <span key={t.id} className="text-slate-300 font-medium">
                         {t.description.replace(/\s*\(\d+\/\d+\)$/, '')} ({t.installment_current}/{t.installment_total})
                         {idx < endingInstallments.length - 1 ? ', ' : '.'}
                       </span>
                     ))}{' '}
-                    Esse valor deixará de pesar na fatura do mês que vem!
+                    Esse valor deixará de pesar na fatura do mês seguinte.
                   </p>
                 </div>
               </div>
@@ -584,19 +584,19 @@ export function TransactionList({
           </div>
         )}
 
-        {/* Barra de Filtros Rápidos (Pill Bar Mobile-First com Scroll Suave) */}
+        {/* Barra de Filtros Rápidos (Pill Bar Mobile-First com Scroll Suave e Cores Unificadas) */}
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 -mx-1 px-1 shrink-0">
           <button
             onClick={() => setQuickFilter('all')}
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border',
               quickFilter === 'all'
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-semibold shadow-sm'
-                : 'bg-[#121826] text-slate-400 border-white/[0.08] hover:text-white hover:bg-white/[0.04]'
+                ? 'bg-white/[0.12] text-white border-white/[0.2] font-semibold shadow-sm'
+                : 'bg-[#111726]/80 text-slate-400 border-white/[0.06] hover:text-white hover:bg-white/[0.04]'
             )}
           >
             <span>Todas</span>
-            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono text-slate-300">
               {filterCounts.all}
             </span>
           </button>
@@ -606,12 +606,12 @@ export function TransactionList({
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border',
               quickFilter === 'own'
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-semibold shadow-sm'
-                : 'bg-[#121826] text-slate-400 border-white/[0.08] hover:text-white hover:bg-white/[0.04]'
+                ? 'bg-white/[0.12] text-white border-white/[0.2] font-semibold shadow-sm'
+                : 'bg-[#111726]/80 text-slate-400 border-white/[0.06] hover:text-white hover:bg-white/[0.04]'
             )}
           >
             <span>👤 Só Meus</span>
-            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono text-slate-300">
               {filterCounts.own}
             </span>
           </button>
@@ -621,12 +621,12 @@ export function TransactionList({
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border',
               quickFilter === 'third_party'
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-semibold shadow-sm'
-                : 'bg-[#121826] text-slate-400 border-white/[0.08] hover:text-white hover:bg-white/[0.04]'
+                ? 'bg-white/[0.12] text-white border-white/[0.2] font-semibold shadow-sm'
+                : 'bg-[#111726]/80 text-slate-400 border-white/[0.06] hover:text-white hover:bg-white/[0.04]'
             )}
           >
             <span>👥 Só Notinhas</span>
-            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono text-slate-300">
               {filterCounts.third_party}
             </span>
           </button>
@@ -636,12 +636,12 @@ export function TransactionList({
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border',
               quickFilter === 'recurring'
-                ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 font-semibold shadow-sm'
-                : 'bg-[#121826] text-slate-400 border-white/[0.08] hover:text-white hover:bg-white/[0.04]'
+                ? 'bg-white/[0.12] text-white border-white/[0.2] font-semibold shadow-sm'
+                : 'bg-[#111726]/80 text-slate-400 border-white/[0.06] hover:text-white hover:bg-white/[0.04]'
             )}
           >
             <span>🔄 Assinaturas</span>
-            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono text-slate-300">
               {filterCounts.recurring}
             </span>
           </button>
@@ -651,12 +651,12 @@ export function TransactionList({
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border',
               quickFilter === 'installment'
-                ? 'bg-violet-500/20 text-violet-300 border-violet-500/40 font-semibold shadow-sm'
-                : 'bg-[#121826] text-slate-400 border-white/[0.08] hover:text-white hover:bg-white/[0.04]'
+                ? 'bg-white/[0.12] text-white border-white/[0.2] font-semibold shadow-sm'
+                : 'bg-[#111726]/80 text-slate-400 border-white/[0.06] hover:text-white hover:bg-white/[0.04]'
             )}
           >
             <span>💳 Parceladas</span>
-            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-white/[0.08] px-1.5 py-0.2 rounded font-mono text-slate-300">
               {filterCounts.installment}
             </span>
           </button>
@@ -678,13 +678,13 @@ export function TransactionList({
 
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0">
             {/* Filtro de Meio de Pagamento */}
-            <div className="flex items-center gap-1 p-0.5 bg-[#121826] rounded-xl border border-white/[0.08] shrink-0">
+            <div className="flex items-center gap-1 p-1 bg-[#111726]/80 rounded-xl border border-white/[0.08] shrink-0">
               <button
                 onClick={() => setFilterMethod('all')}
                 className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap',
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap',
                   filterMethod === 'all'
-                    ? 'bg-emerald-500 text-black font-semibold shadow-sm'
+                    ? 'bg-white/[0.12] text-white font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 )}
               >
@@ -693,9 +693,9 @@ export function TransactionList({
               <button
                 onClick={() => setFilterMethod('pix_cash')}
                 className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 whitespace-nowrap',
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1 whitespace-nowrap',
                   filterMethod === 'pix_cash'
-                    ? 'bg-emerald-500 text-black font-semibold shadow-sm'
+                    ? 'bg-white/[0.12] text-white font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 )}
               >
@@ -705,9 +705,9 @@ export function TransactionList({
               <button
                 onClick={() => setFilterMethod('credit')}
                 className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 whitespace-nowrap',
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1 whitespace-nowrap',
                   filterMethod === 'credit'
-                    ? 'bg-violet-500 text-white font-semibold shadow-sm'
+                    ? 'bg-white/[0.12] text-white font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 )}
               >
@@ -717,13 +717,13 @@ export function TransactionList({
             </div>
 
             {/* Alternador de Visualização (Lista vs Por Categoria) */}
-            <div className="flex items-center gap-1 p-0.5 bg-[#121826] rounded-xl border border-white/[0.08] shrink-0">
+            <div className="flex items-center gap-1 p-1 bg-[#111726]/80 rounded-xl border border-white/[0.08] shrink-0">
               <button
                 onClick={() => setViewMode('list')}
                 className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 whitespace-nowrap',
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1 whitespace-nowrap',
                   viewMode === 'list'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold'
+                    ? 'bg-white/[0.12] text-white font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 )}
                 title="Visualização em Lista Cronológica"
@@ -735,9 +735,9 @@ export function TransactionList({
               <button
                 onClick={() => setViewMode('category')}
                 className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 whitespace-nowrap',
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1 whitespace-nowrap',
                   viewMode === 'category'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold'
+                    ? 'bg-white/[0.12] text-white font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 )}
                 title="Visualização Agrupada por Categoria"

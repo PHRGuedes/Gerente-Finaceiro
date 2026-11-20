@@ -1,28 +1,22 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, memo } from 'react'
 import {
   Wallet,
   CreditCard,
-  CalendarDays,
   HandCoins,
   Users,
   AlertTriangle,
-  ArrowUpRight,
   Receipt,
-  Sparkles,
-  FileSpreadsheet,
-  FileDown,
   Edit2,
   Check,
   X,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import { BillingCycleInfo } from '@/lib/billing'
-import { AccountBalance, ForecastItem, InformalDebt, Receivable } from '@/types/finance'
+import { ForecastItem, InformalDebt, Receivable } from '@/types/finance'
 import { setCheckingBalanceAction } from '@/actions/finance'
 
 interface HeaderStatsProps {
@@ -53,18 +47,15 @@ interface HeaderStatsProps {
   onOpenExportPdf?: () => void
 }
 
-export function HeaderStats({
+function HeaderStatsComponent({
   checkingBalance,
   billingCycle,
   creditInvoice,
   informalDebts,
   receivables,
   onOpenPayInvoice,
-  onOpenNewTransaction,
   onOpenAmortizeDebt,
   onOpenSettleReceivable,
-  onOpenConciliateCsv,
-  onOpenExportPdf,
 }: HeaderStatsProps) {
   const isLowBalance = checkingBalance < 50.0
   const [isEditingBalance, setIsEditingBalance] = useState(false)
@@ -91,23 +82,23 @@ export function HeaderStats({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* 1. Saldo Atual em Conta (com alerta visual se < R$ 50,00) */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* 1. Saldo em Conta */}
       <Card
-        className={`relative overflow-hidden transition-all duration-300 ${
+        className={`relative overflow-hidden rounded-2xl border transition-all duration-200 ${
           isLowBalance
-            ? 'border-rose-500/60 bg-gradient-to-b from-[#240e16] to-[#12080d] shadow-lg shadow-rose-950/40 ring-1 ring-rose-500/50'
-            : 'border-emerald-500/20 bg-gradient-to-b from-[#0f1725] to-[#0a101b]'
+            ? 'border-rose-500/40 bg-gradient-to-b from-[#1c0c12]/80 to-[#0c101a]/80'
+            : 'border-white/[0.08] bg-[#0c101a]/80 hover:border-white/[0.14]'
         }`}
       >
         {isLowBalance && (
-          <div className="absolute top-0 right-0 left-0 bg-rose-500/20 text-rose-300 text-[10px] font-semibold tracking-wider uppercase py-0.5 text-center flex items-center justify-center gap-1 border-b border-rose-500/30 animate-pulse">
-            <AlertTriangle className="h-3 w-3 text-rose-400" />
-            Alerta: Saldo abaixo de R$ 50,00!
+          <div className="px-3 py-1 bg-rose-500/15 border-b border-rose-500/20 text-rose-300 text-[10px] font-semibold flex items-center justify-center gap-1.5">
+            <AlertTriangle className="h-3 w-3 text-rose-400 shrink-0" />
+            <span>Saldo abaixo de R$ 50,00</span>
           </div>
         )}
 
-        <CardHeader className={`p-4 pb-1 flex flex-row items-center justify-between ${isLowBalance ? 'pt-6' : ''}`}>
+        <CardHeader className="p-4 pb-1 flex flex-row items-center justify-between">
           <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
             Saldo em Conta
           </span>
@@ -116,20 +107,14 @@ export function HeaderStats({
               <button
                 type="button"
                 onClick={handleOpenEditBalance}
-                className="h-7 px-2 rounded-lg text-[10px] font-semibold bg-white/[0.04] hover:bg-emerald-500/15 text-slate-300 hover:text-emerald-300 border border-white/[0.08] hover:border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer"
+                className="h-7 px-2 rounded-lg text-[10px] font-semibold bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] flex items-center gap-1 transition-all cursor-pointer"
                 title="Ajustar saldo real em conta"
               >
                 <Edit2 className="h-2.5 w-2.5 text-emerald-400" />
                 <span>Ajustar</span>
               </button>
             )}
-            <div
-              className={`p-2 rounded-xl ${
-                isLowBalance
-                  ? 'bg-rose-500/20 text-rose-400'
-                  : 'bg-emerald-500/10 text-emerald-400'
-              }`}
-            >
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">
               <Wallet className="h-4 w-4" />
             </div>
           </div>
@@ -155,7 +140,7 @@ export function HeaderStats({
                 <button
                   type="submit"
                   disabled={savingBalance}
-                  className="flex-1 h-7 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                  className="flex-1 h-7 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] flex items-center justify-center gap-1 cursor-pointer transition-colors"
                 >
                   <Check className="h-3 w-3" />
                   {savingBalance ? 'Salvando...' : 'Salvar Saldo'}
@@ -163,7 +148,7 @@ export function HeaderStats({
                 <button
                   type="button"
                   onClick={() => setIsEditingBalance(false)}
-                  className="h-7 px-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 text-[11px] flex items-center justify-center cursor-pointer"
+                  className="h-7 px-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 text-[11px] flex items-center justify-center cursor-pointer transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -181,103 +166,79 @@ export function HeaderStats({
             </div>
           )}
 
-          <p className="text-[11px] text-slate-400 flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+          <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0"></span>
             Conta Corrente / Pix disponível
           </p>
         </CardContent>
       </Card>
 
       {/* 2. Fatura em Formação (Crédito) */}
-      <Card className="border-violet-500/30 bg-gradient-to-b from-[#15122a] to-[#0c0a18] shadow-lg shadow-black/40">
+      <Card className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a]/80 hover:border-white/[0.14] transition-all duration-200">
         <CardHeader className="p-4 pb-1 flex flex-row items-center justify-between">
           <div>
             <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">
               Fatura em Formação
             </span>
-            <span className="text-[10px] text-violet-400 font-mono">
+            <span className="text-[10px] text-slate-400 font-mono">
               Fecha em {billingCycle.daysUntilClosing} dias (04/{billingCycle.cycleId.split('-')[1]})
             </span>
           </div>
-          <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400">
+          <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400 shrink-0">
             <CreditCard className="h-4 w-4" />
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 pt-1 space-y-3">
+        <CardContent className="p-4 pt-1 space-y-2.5">
           <div className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
             {formatCurrency(creditInvoice.total)}
           </div>
 
           {/* Breakdown: Gasto Próprio vs Notinhas */}
-          <div className="space-y-1.5 pt-1 border-t border-white/[0.06] text-[11px]">
+          <div className="space-y-1 pt-1 border-t border-white/[0.06] text-[11px]">
             <div className="flex justify-between items-center text-slate-300">
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-violet-400"></span>
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0"></span>
                 Gasto Próprio:
               </span>
-              <span className="font-semibold">{formatCurrency(creditInvoice.ownExpense)}</span>
+              <span className="font-semibold text-white">{formatCurrency(creditInvoice.ownExpense)}</span>
             </div>
-            <div className="flex justify-between items-center text-amber-300">
+            <div className="flex justify-between items-center text-amber-300/90">
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-amber-400"></span>
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0"></span>
                 Notinhas / Terceiros:
               </span>
               <span className="font-semibold">{formatCurrency(creditInvoice.thirdPartyExpense)}</span>
             </div>
           </div>
 
-          {/* Ações da Fatura: Conciliar CSV e Exportar PDF */}
-          <div className="grid grid-cols-2 gap-1.5 pt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenConciliateCsv}
-              className="text-[10px] font-semibold border-violet-500/30 hover:bg-violet-500/20 text-violet-200 h-7 px-1.5"
-              title="Conciliar fatura Nubank via CSV"
-            >
-              <FileSpreadsheet className="h-3 w-3 mr-1 text-violet-400 shrink-0" />
-              <span className="truncate">Conciliar CSV</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenExportPdf}
-              className="text-[10px] font-semibold border-violet-500/30 hover:bg-violet-500/20 text-violet-200 h-7 px-1.5"
-              title="Exportar fatura em PDF"
-            >
-              <FileDown className="h-3 w-3 mr-1 text-violet-400 shrink-0" />
-              <span className="truncate">Exportar PDF</span>
-            </Button>
-          </div>
-
-          {/* Botão Pagar Fatura */}
+          {/* Ação Principal: Pagar Fatura */}
           <Button
             variant="outline"
             size="sm"
             onClick={onOpenPayInvoice}
             disabled={creditInvoice.total <= 0}
-            className="w-full text-xs font-semibold border-violet-500/30 hover:bg-violet-500/20 text-violet-200 mt-1 h-8"
+            className="w-full text-xs font-semibold border-white/[0.08] bg-white/[0.03] hover:bg-violet-500/15 hover:border-violet-500/30 text-slate-200 hover:text-violet-200 h-8 transition-all"
           >
-            <Receipt className="h-3.5 w-3.5 mr-1 text-violet-400" />
+            <Receipt className="h-3.5 w-3.5 mr-1.5 text-violet-400 shrink-0" />
             Pagar Fatura
           </Button>
         </CardContent>
       </Card>
 
       {/* 3. Dívidas */}
-      <Card className="border-cyan-500/20 bg-gradient-to-b from-[#0e1620] to-[#090f17]">
+      <Card className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a]/80 hover:border-white/[0.14] transition-all duration-200">
         <CardHeader className="p-4 pb-1 flex flex-row items-center justify-between">
           <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
             Dívidas
           </span>
-          <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
+          <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 shrink-0">
             <HandCoins className="h-4 w-4" />
           </div>
         </CardHeader>
 
         <CardContent className="p-4 pt-1 space-y-2">
-          <div className="text-2xl lg:text-3xl font-extrabold text-cyan-400 tracking-tight">
+          <div className="text-2xl lg:text-3xl font-extrabold text-cyan-300 tracking-tight">
             {formatCurrency(informalDebts.totalRemaining)}
           </div>
 
@@ -303,13 +264,13 @@ export function HeaderStats({
         </CardContent>
       </Card>
 
-      {/* 5. Total de Notinhas a Receber no ciclo */}
-      <Card className="border-amber-500/20 bg-gradient-to-b from-[#1c160c] to-[#0f0b07]">
+      {/* 4. Notinhas a Receber no ciclo */}
+      <Card className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a]/80 hover:border-white/[0.14] transition-all duration-200">
         <CardHeader className="p-4 pb-1 flex flex-row items-center justify-between">
           <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
             Notinhas a Receber
           </span>
-          <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+          <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 shrink-0">
             <Users className="h-4 w-4" />
           </div>
         </CardHeader>
@@ -340,3 +301,5 @@ export function HeaderStats({
     </div>
   )
 }
+
+export const HeaderStats = memo(HeaderStatsComponent)
