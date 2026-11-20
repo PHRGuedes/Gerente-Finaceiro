@@ -1225,14 +1225,25 @@ export async function replicateRecurringSubscriptionsAction(targetCycleId: strin
     }
   }
 
-  // 4. Calcular data aproximada no novo ciclo (mantendo o dia original da compra ou dia 10)
+  // 4. Calcular data correta no novo ciclo (respeitando fechamento no dia 04)
   const [targetYear, targetMonth] = targetCycleId.split('-').map(Number)
 
   const insertPayloads = Array.from(toInsertMap.values()).map((orig) => {
     const origDay = orig.date ? Number(orig.date.split('-')[2]) || 10 : 10
-    const maxDayInMonth = new Date(targetYear, targetMonth, 0).getDate()
+    // Regra do ciclo: se origDay > 4, pertence ao mês anterior ao fechamento do ciclo
+    // Se origDay <= 4, pertence ao próprio mês de fechamento
+    let year = targetYear
+    let month = targetMonth
+    if (origDay > 4) {
+      month -= 1
+      if (month < 1) {
+        month = 12
+        year -= 1
+      }
+    }
+    const maxDayInMonth = new Date(year, month, 0).getDate()
     const safeDay = Math.min(origDay, maxDayInMonth)
-    const newDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`
+    const newDate = `${year}-${String(month).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`
 
     return {
       user_id: user.id,

@@ -54,6 +54,7 @@ export default async function DashboardPage() {
     .select('*')
     .eq('user_id', user.id)
     .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
 
   const allTransactions = (txRows || []) as Transaction[]
 
@@ -148,6 +149,7 @@ export default async function DashboardPage() {
     .select('*')
     .eq('user_id', user.id)
     .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
 
   const pokerEntries = (pokerRows || []) as PokerEntry[]
 

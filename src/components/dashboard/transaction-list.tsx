@@ -82,7 +82,7 @@ interface TransactionListProps {
 type FilterMethod = 'all' | 'pix_cash' | 'credit'
 type QuickFilterType = 'all' | 'own' | 'third_party' | 'recurring' | 'installment'
 type ViewMode = 'list' | 'category'
-type SortOption = 'date_desc' | 'amount_desc' | 'amount_asc'
+type SortOption = 'date_desc' | 'created_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'
 
 export function TransactionList({
   transactions,
@@ -197,8 +197,26 @@ export function TransactionList({
       if (sortBy === 'amount_asc') {
         return Number(a.amount) - Number(b.amount)
       }
-      // date_desc (padrão)
-      return new Date(b.date).getTime() - new Date(a.date).getTime()
+      if (sortBy === 'created_desc') {
+        const cA = a.created_at ? new Date(a.created_at).getTime() : 0
+        const cB = b.created_at ? new Date(b.created_at).getTime() : 0
+        return cB - cA
+      }
+      if (sortBy === 'date_asc') {
+        const dA = a.date ? Number(a.date.slice(0, 10).replace(/-/g, '')) : 0
+        const dB = b.date ? Number(b.date.slice(0, 10).replace(/-/g, '')) : 0
+        if (dA !== dB) return dA - dB
+        const cA = a.created_at ? new Date(a.created_at).getTime() : 0
+        const cB = b.created_at ? new Date(b.created_at).getTime() : 0
+        return cA - cB
+      }
+      // date_desc (padrão: data da compra mais recente primeiro; desempata por cadastro recente)
+      const dA = a.date ? Number(a.date.slice(0, 10).replace(/-/g, '')) : 0
+      const dB = b.date ? Number(b.date.slice(0, 10).replace(/-/g, '')) : 0
+      if (dB !== dA) return dB - dA
+      const cA = a.created_at ? new Date(a.created_at).getTime() : 0
+      const cB = b.created_at ? new Date(b.created_at).getTime() : 0
+      return cB - cA
     })
   }, [transactions, filterMethod, quickFilter, searchTerm, sortBy])
 
@@ -732,7 +750,9 @@ export function TransactionList({
                 className="bg-[#121826] border border-white/[0.08] text-slate-300 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-500/50 cursor-pointer"
                 title="Ordenar lançamentos"
               >
-                <option value="date_desc">📅 Mais recentes</option>
+                <option value="date_desc">📅 Mais recentes (Data)</option>
+                <option value="created_desc">⏱️ Últimos adicionados</option>
+                <option value="date_asc">🗓️ Mais antigos (Data)</option>
                 <option value="amount_desc">💰 Maior valor</option>
                 <option value="amount_asc">📉 Menor valor</option>
               </select>
