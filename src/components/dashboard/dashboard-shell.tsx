@@ -208,17 +208,6 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
             >
               <Users className="h-3.5 w-3.5 shrink-0" />
               <span>Notinhas</span>
-              {pendingNotinhasCount > 0 && (
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold leading-none ${
-                    activeTab === 'notinhas'
-                      ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
-                      : 'bg-amber-500/15 text-amber-400'
-                  }`}
-                >
-                  {pendingNotinhasCount}
-                </span>
-              )}
             </button>
 
             <button
@@ -516,20 +505,13 @@ export function DashboardShell({ initialData }: DashboardShellProps) {
           <button
             type="button"
             onClick={() => setActiveTab('notinhas')}
-            className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${
+            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${
               activeTab === 'notinhas'
                 ? 'bg-amber-500/15 text-amber-300 font-bold'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <div className="relative">
-              <Users className="h-4 w-4 mb-0.5 shrink-0" />
-              {pendingNotinhasCount > 0 && (
-                <span className="absolute -top-1.5 -right-3 text-[9px] px-1 min-w-[16px] h-4 rounded-full font-mono bg-amber-500 text-black font-extrabold flex items-center justify-center leading-none">
-                  {pendingNotinhasCount}
-                </span>
-              )}
-            </div>
+            <Users className="h-4 w-4 mb-0.5 shrink-0" />
             <span className="text-[10px] leading-tight whitespace-nowrap">Notinhas</span>
           </button>
 

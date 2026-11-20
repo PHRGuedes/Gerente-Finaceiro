@@ -100,6 +100,8 @@ export function TransactionList({
   const [searchTerm, setSearchTerm] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
+  const [isExpanded, setIsExpanded] = useState(false)
+  const PREVIEW_LIMIT = 5
 
   // Estado para replicação de assinaturas
   const [isPendingReplication, startReplicationTransition] = useTransition()
@@ -228,6 +230,26 @@ export function TransactionList({
     // Ordenar grupos pelo maior subtotal
     return groups.sort((a, b) => b.subtotal - a.subtotal)
   }, [processedTransactions, viewMode])
+
+  // Lançamentos exibidos (resumidos ou expandidos)
+  const displayedTransactions = useMemo(() => {
+    if (isExpanded || searchTerm.trim().length > 0) {
+      return processedTransactions
+    }
+    return processedTransactions.slice(0, PREVIEW_LIMIT)
+  }, [processedTransactions, isExpanded, searchTerm])
+
+  const hasMore = processedTransactions.length > PREVIEW_LIMIT
+
+  // Grupos por categoria exibidos (resumidos ou expandidos)
+  const displayedCategoryGroups = useMemo(() => {
+    if (isExpanded || searchTerm.trim().length > 0) {
+      return categoryGroups
+    }
+    return categoryGroups.slice(0, 3)
+  }, [categoryGroups, isExpanded, searchTerm])
+
+  const hasMoreCategoryGroups = categoryGroups.length > 3
 
   const handleDelete = async (id: string) => {
     if (!confirm('Deseja realmente excluir este lançamento?')) return
@@ -442,10 +464,25 @@ export function TransactionList({
           <div>
             <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2 text-white">
               <Layers className="h-4 w-4 text-emerald-400" />
-              Movimentações do Ciclo Atual
+              <span>Movimentações do Ciclo Atual</span>
+              {hasMore && !searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="h-6 w-6 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 ml-1"
+                  title={isExpanded ? 'Recolher lançamentos' : 'Expandir todos os lançamentos'}
+                >
+                  {isExpanded ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              )}
             </CardTitle>
             <CardDescription className="text-xs text-slate-400">
               {cycleLabel} • {processedTransactions.length} de {transactions.length} lançamentos
+              {!isExpanded && hasMore && !searchTerm && ' (exibindo resumo)'}
             </CardDescription>
           </div>
 
@@ -719,13 +756,34 @@ export function TransactionList({
           </div>
         ) : viewMode === 'list' ? (
           // VISUALIZAÇÃO EM LISTA
-          <div className="divide-y divide-white/[0.04]">
-            {processedTransactions.map((tx) => renderTransactionCard(tx))}
+          <div className="space-y-2">
+            <div className="divide-y divide-white/[0.04]">
+              {displayedTransactions.map((tx) => renderTransactionCard(tx))}
+            </div>
+
+            {hasMore && !searchTerm && (
+              <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full py-2.5 px-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-xs font-semibold text-slate-300 hover:text-white flex items-center justify-center gap-2 transition-all mt-2 cursor-pointer"
+              >
+                <span>
+                  {isExpanded
+                    ? 'Recolher lançamentos'
+                    : `Ver todos os ${processedTransactions.length} lançamentos (+${processedTransactions.length - PREVIEW_LIMIT})`}
+                </span>
+                {isExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-emerald-400" />
+                )}
+              </button>
+            )}
           </div>
         ) : (
           // VISUALIZAÇÃO AGRUPADA POR CATEGORIA
           <div className="space-y-4 pt-1">
-            {categoryGroups.map((group) => {
+            {displayedCategoryGroups.map((group) => {
               const catInfo = categoryMap.get(group.catName)
               const IconComp = catInfo?.icon && iconMap[catInfo.icon] ? iconMap[catInfo.icon] : Tag
               const catColor = catInfo?.color || '#10b981'
@@ -793,6 +851,25 @@ export function TransactionList({
                 </div>
               )
             })}
+
+            {hasMoreCategoryGroups && !searchTerm && (
+              <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full py-2.5 px-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-xs font-semibold text-slate-300 hover:text-white flex items-center justify-center gap-2 transition-all mt-2 cursor-pointer"
+              >
+                <span>
+                  {isExpanded
+                    ? 'Recolher categorias'
+                    : `Ver todas as ${categoryGroups.length} categorias (+${categoryGroups.length - 3})`}
+                </span>
+                {isExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-emerald-400" />
+                )}
+              </button>
+            )}
           </div>
         )}
       </CardContent>
