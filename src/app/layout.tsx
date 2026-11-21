@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { PwaInstallPrompt } from '@/components/pwa-install-prompt'
 import './globals.css'
 
 const geistSans = Geist({
@@ -52,6 +53,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-[#0a0d14] text-slate-100 antialiased selection:bg-emerald-500/20 selection:text-emerald-300 font-sans`}
       >
         {children}
+        <PwaInstallPrompt />
         <Analytics />
       </body>
     </html>
