@@ -17,7 +17,9 @@ export interface InvoicePdfData {
   sortMode: PdfSortMode
 }
 
-export function generateInvoicePdf(data: InvoicePdfData) {
+export async function generateInvoicePdf(
+  data: InvoicePdfData
+): Promise<{ success: boolean; shared?: boolean }> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -233,6 +235,75 @@ export function generateInvoicePdf(data: InvoicePdfData) {
     )
   }
 
-  // Baixar arquivo PDF
-  doc.save(`fatura-${cycle.cycleId}.pdf`)
+  const fileName = `fatura-${cycle.cycleId}.pdf`
+
+  // 1. Tentar Web Share API se estiver no celular (compartilha arquivo nativamente para WhatsApp, Salvar em Arquivos, etc.)
+  try {
+    const pdfBlob = doc.output('blob')
+    const file = new File([pdfBlob], fileName, { type: 'application/pdf' })
+
+    if (
+      typeof navigator !== 'undefined' &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+      await navigator.share({
+        files: [file],
+        title: `Extrato ${cycle.label}`,
+        text: `Extrato consolidado da fatura de cartão de crédito - ${cycle.label}`,
+      })
+      return { success: true, shared: true }
+    }
+  } catch (shareErr) {
+    // Se o usuário cancelou o compartilhamento, não trata como erro fatal
+    if (shareErr instanceof Error && shareErr.name === 'AbortError') {
+      return { success: true, shared: false }
+    }
+    console.warn('Web Share API não disponível ou falhou:', shareErr)
+  }
+
+  // 2. Fallback robusto para mobile e desktop via Blob URL
+  try {
+    const pdfBlob = doc.output('blob')
+    const blobUrl = URL.createObjectURL(pdfBlob)
+
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = fileName
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    document.body.appendChild(link)
+    link.click()
+
+    setTimeout(() => {
+      document.body.removeChild(link)
+      URL.revokeObjectURL(blobUrl)
+    }, 4000)
+
+    return { success: true, shared: false }
+  } catch (blobErr) {
+    console.warn('Download via Blob URL falhou, usando doc.save:', blobErr)
+    doc.save(fileName)
+    return { success: true, shared: false }
+  }
+}
+
+/**
+ * Abre o PDF diretamente em uma nova aba do navegador (100% compatível com visualizadores de celular).
+ */
+export function previewInvoicePdf(data: InvoicePdfData) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  })
+
+  // Reutiliza a geração completa chamando a mesma lógica e abrindo em blob url
+  const { cycle } = data
+  const fileName = `fatura-${cycle.cycleId}.pdf`
+
+  // Gera o blob
+  const pdfBlob = doc.output('blob')
+  const blobUrl = URL.createObjectURL(pdfBlob)
+  window.open(blobUrl, '_blank')
 }

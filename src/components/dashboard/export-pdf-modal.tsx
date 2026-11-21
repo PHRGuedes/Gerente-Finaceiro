@@ -44,20 +44,22 @@ export function ExportPdfModal({
 
   if (!isOpen) return null
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     setIsGenerating(true)
     try {
-      generateInvoicePdf({
+      const res = await generateInvoicePdf({
         cycle,
         transactions: creditTransactions,
         totals,
         sortMode,
       })
-      setSuccess(true)
-      setTimeout(() => {
-        setSuccess(false)
-        onClose()
-      }, 1500)
+      if (res?.success) {
+        setSuccess(true)
+        setTimeout(() => {
+          setSuccess(false)
+          onClose()
+        }, 2000)
+      }
     } catch (err) {
       console.error('Erro ao gerar PDF da fatura:', err)
     } finally {
@@ -178,7 +180,7 @@ export function ExportPdfModal({
           {success && (
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-              <span>PDF gerado e transferido para seu dispositivo!</span>
+              <span>PDF gerado com sucesso! Arquivo transferido ou compartilhado.</span>
             </div>
           )}
         </div>
@@ -201,7 +203,7 @@ export function ExportPdfModal({
             className="bg-violet-600 hover:bg-violet-500 text-white font-bold shadow-lg shadow-violet-600/20 flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
-            {isGenerating ? 'Gerando PDF...' : 'Baixar PDF da Fatura'}
+            {isGenerating ? 'Gerando PDF...' : 'Baixar / Compartilhar PDF'}
           </Button>
         </div>
       </div>
