@@ -25,14 +25,19 @@ export const metadata: Metadata = {
   title: 'Controle Financeiro Pessoal',
   description:
     'Sistema moderno de controle financeiro pessoal, despesas, cartões, notinhas de terceiros, dívidas e tracker de poker.',
+  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Financeiro',
   },
   icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/icon-192.png',
   },
 }
 

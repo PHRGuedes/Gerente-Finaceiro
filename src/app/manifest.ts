@@ -6,7 +6,9 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Financeiro',
     description:
       'Sistema moderno de controle financeiro pessoal, faturas, notinhas de terceiros, dívidas e tracker de poker.',
+    id: '/',
     start_url: '/',
+    scope: '/',
     display: 'standalone',
     background_color: '#07090e',
     theme_color: '#07090e',
